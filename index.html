@@ -192,6 +192,16 @@
       </div>
     </div>
 
+    <div class="section-label">ボトルネック診断</div>
+    <div class="chart-card">
+      <h3 style="display:flex; align-items:center; gap:8px;"><span class="tab-badge" style="font-size:11px;">捜査ファイル 判定</span></h3>
+      <div id="bottleneckBox"></div>
+      <div class="insight" id="bottleneckInsight"></div>
+      <div class="footnote">
+        在庫回転・売掛金回収・買掛金支払の3つそれぞれについて、過去の年度からの乖離度（zスコア）を個別に計算し、最も過去と違う動きをしている項目を「現在のボトルネック」として判定する。CCC全体のzスコアとは別に、どこが原因かまで踏み込んだ診断。
+      </div>
+    </div>
+
     <div class="section-label">運転資金インパクト</div>
     <div class="chart-card">
       <h3>キャッシュ・コンバージョン・サイクルが縛っている金額</h3>
@@ -234,6 +244,10 @@
 
     <div class="section-label">用語集</div>
     <div class="chart-card glossary">
+      <details>
+        <summary>ボトルネック診断</summary>
+        <p>在庫回転・売掛金回収・買掛金支払の3項目それぞれについてzスコアを計算し、最も過去の傾向から外れている項目を「現在のボトルネック」として特定する診断。CCC全体のzスコアが「悪化しているかどうか」を見るのに対し、こちらは「どこが原因か」まで踏み込む。</p>
+      </details>
       <details>
         <summary>CCC（キャッシュ・コンバージョン・サイクル）</summary>
         <p>仕入で現金を払ってから、販売して現金が戻ってくるまでの日数。CCC = 在庫回転日数 + 売掛金回転日数 − 買掛金回転日数。短いほど資金繰りが効率的。</p>
@@ -917,6 +931,69 @@ function renderGroupedBarChart(containerId, categoryLabels, groups){
 }
 
 /* ================= wire charts to data ================= */
+function zScoreOf(values, latestIdx){
+  const latest = values[latestIdx];
+  const baseline = values.slice(0, latestIdx).filter(v => v !== null && v !== undefined);
+  if(latest===null || latest===undefined || baseline.length < 2) return null;
+  const mean = baseline.reduce((s,v)=>s+v,0) / baseline.length;
+  const variance = baseline.reduce((s,v)=>s+(v-mean)**2,0) / (baseline.length-1);
+  const std = Math.sqrt(variance);
+  return { z: std>0 ? (latest-mean)/std : 0, mean, std, latest };
+}
+
+function renderBottleneckDiagnosis(){
+  const box = document.getElementById('bottleneckBox');
+  const insight = document.getElementById('bottleneckInsight');
+  const recs = records();
+  if(recs.length < 4){
+    box.innerHTML = '<div class="empty-note">判定には年度が4つ以上（過去3年以上の基準値）必要です</div>';
+    insight.textContent = '';
+    return;
+  }
+  const idx = recs.length - 1;
+  const dInvArr = recs.map(r => computed(r).dInv);
+  const dRecArr = recs.map(r => computed(r).dRec);
+  const dPayArr = recs.map(r => computed(r).dPay);
+
+  const zInv = zScoreOf(dInvArr, idx);
+  const zRec = zScoreOf(dRecArr, idx);
+  const zPay = zScoreOf(dPayArr, idx);
+
+  if(!zInv || !zRec || !zPay){
+    box.innerHTML = '<div class="empty-note">在庫・売掛金・買掛金のいずれかのデータが不足しているため判定できません</div>';
+    insight.textContent = '';
+    return;
+  }
+
+  // Effective severity toward WORSENING CCC: inventory days up = worse, receivable days up = worse, payable days DOWN = worse
+  const candidates = [
+    { name:'在庫回転', z: zInv.z, effective: zInv.z, raw: zInv, unit:'日', note:'商品が売れるまでの日数が伸びている（在庫の滞留）' },
+    { name:'売掛金回収', z: zRec.z, effective: zRec.z, raw: zRec, unit:'日', note:'代金回収までの日数が伸びている（回収の遅れ）' },
+    { name:'買掛金支払', z: zPay.z, effective: -zPay.z, raw: zPay, unit:'日', note:'仕入代金の支払いが早まっている（支払サイトの短縮）' },
+  ];
+  candidates.sort((a,b) => Math.abs(b.effective) - Math.abs(a.effective));
+  const top = candidates[0];
+  const absEff = Math.abs(top.effective);
+  let severity, cls;
+  if(absEff < 1){ severity='際立ったボトルネックなし'; cls='good'; }
+  else if(absEff < 2){ severity='軽度の兆候'; cls='warn'; }
+  else { severity='明確なボトルネック'; cls='warn'; }
+
+  box.innerHTML = `
+    <div class="stamp ${cls}" style="max-width:340px;">
+      <div class="label">現在のボトルネック</div>
+      <div class="anomaly-value" style="font-size:24px;">${absEff<1 ? '特定なし' : top.name}</div>
+      <div class="anomaly-label">${severity}（z ${top.effective>=0?'+':''}${top.effective.toFixed(2)}）</div>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:var(--text-dim); display:flex; gap:16px; flex-wrap:wrap;">
+      ${candidates.map(c => `<span>${c.name}: z ${c.z>=0?'+':''}${c.z.toFixed(2)}</span>`).join('')}
+    </div>
+  `;
+  insight.innerHTML = absEff < 1
+    ? '3項目とも過去の範囲内に収まっており、特定の工程がボトルネックになっている様子は見られない。'
+    : `<b>${top.name}</b>が最も過去の傾向から外れている（${top.note}）。CCC全体の変化は主にここが起点になっている可能性が高い。`;
+}
+
 function renderAnomalySection(){
   const box = document.getElementById('anomalyBox');
   const insight = document.getElementById('anomalyInsight');
@@ -1002,6 +1079,7 @@ function renderCharts(){
   renderLineChart('cccChart', labels, [{label:'CCC（日）', color:'#c9a227', data: recs.map(r=>computed(r).ccc)}], {area:true, decimals:0});
   renderCCCInsight();
   renderAnomalySection();
+  renderBottleneckDiagnosis();
   renderCashImpact();
 
   renderLineChart('marginChart', labels, [
