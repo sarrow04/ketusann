@@ -443,6 +443,7 @@ document.getElementById('companySelect').addEventListener('change', (e) => {
   updateGasCompanyLabel();
   applyUnitLabels();
   render();
+  if(gasUrl()) gasLoad();
 });
 document.getElementById('addCompanyBtn').addEventListener('click', () => {
   const name = prompt('企業名を入力してください');
@@ -455,6 +456,7 @@ document.getElementById('addCompanyBtn').addEventListener('click', () => {
   updateGasCompanyLabel();
   applyUnitLabels();
   render();
+  if(gasUrl()) gasLoad();
 });
 
 /* ================= main tab switching ================= */
