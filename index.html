@@ -75,6 +75,7 @@
   tbody input{width:88px; background:#0f151d; border:1px solid var(--line); color:var(--text); font-family:"JetBrains Mono",monospace; font-size:12.5px; padding:5px 6px; border-radius:3px; text-align:right;}
   tbody input:focus{outline:none; border-color:var(--gold);}
   tbody input.year-input{font-family:"Noto Sans JP",sans-serif; text-align:left; width:110px;}
+  tbody input.memo-input{font-family:"Noto Sans JP",sans-serif; text-align:left; width:220px;}
   tbody select{background:#0f151d; border:1px solid var(--line); color:var(--text); font-family:"Noto Sans JP",sans-serif; font-size:12.5px; padding:5px 6px; border-radius:3px;}
   tbody select:focus{outline:none; border-color:var(--gold);}
   .computed{color:var(--text-dim);}
@@ -157,7 +158,12 @@
   <div class="tab-panel active" id="tab-dashboard">
     <div class="stamps" id="stamps"></div>
 
-    <div class="section-label first">売上高・利益の推移</div>
+    <div class="section-label first">年度メモ（出来事）</div>
+    <div class="chart-card" id="memoCard">
+      <div id="memoList"></div>
+    </div>
+
+    <div class="section-label">売上高・利益の推移</div>
     <div class="chart-card">
       <h3>売上高・売上原価（棒）／営業利益（線）／単位：<span class="unit-tag">百万円</span></h3>
       <div class="chart-box" id="salesChart"></div>
@@ -203,6 +209,13 @@
       <div class="insight" id="marginInsight"></div>
     </div>
 
+    <div class="section-label">財務健全性・株主還元の推移</div>
+    <div class="chart-card">
+      <h3>自己資本比率・配当性向（%）</h3>
+      <div class="chart-box" id="capitalChart"></div>
+      <div class="footnote">自己資本比率＝自己資本÷総資産×100。配当性向＝配当金÷当期純利益×100。自己資本・総資産・配当金・当期純利益を入力すると表示されます。</div>
+    </div>
+
     <div class="section-label">四半期の季節パターン</div>
     <div class="chart-card">
       <h3>四半期末 商品残高（<span class="unit-tag">百万円</span>）— 年またぎ比較</h3>
@@ -223,6 +236,10 @@
       <details>
         <summary>原価率・販管費率・営業利益率</summary>
         <p>いずれも売上高に対する割合。原価率＝売上原価÷売上高、販管費率＝販管費÷売上高、営業利益率＝営業利益÷売上高。原価率が下がる、または販管費率が下がると、営業利益率は改善しやすい。</p>
+      </details>
+      <details>
+        <summary>自己資本比率・配当性向</summary>
+        <p>自己資本比率＝自己資本÷総資産×100。総資産のうち借金に頼らない自己資本の割合で、高いほど財務が安定している。配当性向＝配当金÷当期純利益×100。稼いだ利益のうち、どれだけを株主に還元しているかを示す。</p>
       </details>
       <details>
         <summary>zスコア（標準偏差からの乖離度）</summary>
@@ -266,9 +283,10 @@
           <tr>
             <th>年度</th><th></th>
             <th>売上高</th><th>売上原価</th><th>商品(棚卸)</th><th>売掛金</th><th>買掛金</th>
-            <th>営業利益</th><th>販管費</th>
-            <th>原価率%</th><th>販管費率%</th><th>営業利益率%</th>
+            <th>営業利益</th><th>販管費</th><th>自己資本</th><th>総資産</th><th>配当金</th><th>当期純利益</th>
+            <th>原価率%</th><th>販管費率%</th><th>営業利益率%</th><th>自己資本比率%</th><th>配当性向%</th>
             <th>在庫日数</th><th>売掛日数</th><th>買掛日数</th><th>CCC</th>
+            <th>メモ（その期の出来事）</th>
           </tr>
         </thead>
         <tbody id="ledgerBody"></tbody>
@@ -299,11 +317,11 @@
 const QUARTER_OPTIONS = ['第1四半期','第2四半期','第3四半期','期末'];
 
 const SHIMAMURA_RECORDS = [
-  {id:'r1', year:'2022年2月期', sales:583618, cogs:384687, inventory:52599, receivables:8509, payables:28425, opIncome:49420, sga:150663},
-  {id:'r2', year:'2023年2月期', sales:616125, cogs:406129, inventory:54266, receivables:10217, payables:24285, opIncome:53302, sga:158088},
-  {id:'r3', year:'2024年2月期', sales:635091, cogs:416529, inventory:57146, receivables:12349, payables:24625, opIncome:55308, sga:164662},
-  {id:'r4', year:'2025年2月期', sales:665358, cogs:434475, inventory:56829, receivables:13726, payables:24066, opIncome:59240, sga:173026},
-  {id:'r5', year:'2026年2月期', sales:700034, cogs:456130, inventory:60923, receivables:15000, payables:25696, opIncome:61483, sga:183771},
+  {id:'r1', year:'2022年2月期', sales:583618, cogs:384687, inventory:52599, receivables:8509, payables:28425, opIncome:49420, sga:150663, equity:410995, totalAssets:474811, dividend:8820, netIncome:35428, memo:''},
+  {id:'r2', year:'2023年2月期', sales:616125, cogs:406129, inventory:54266, receivables:10217, payables:24285, opIncome:53302, sga:158088, equity:440048, totalAssets:502552, dividend:9555, netIncome:38021, memo:''},
+  {id:'r3', year:'2024年2月期', sales:635091, cogs:416529, inventory:57146, receivables:12349, payables:24625, opIncome:55308, sga:164662, equity:471408, totalAssets:533807, dividend:10290, netIncome:40084, memo:''},
+  {id:'r4', year:'2025年2月期', sales:665358, cogs:434475, inventory:56829, receivables:13726, payables:24066, opIncome:59240, sga:173026, equity:500976, totalAssets:567144, dividend:14700, netIncome:41885, memo:''},
+  {id:'r5', year:'2026年2月期', sales:700034, cogs:456130, inventory:60923, receivables:15000, payables:25696, opIncome:61483, sga:183771, equity:488545, totalAssets:554667, dividend:15309, netIncome:44460, memo:''},
 ];
 const SHIMAMURA_QUARTERS = [
   {id:'q1',  year:'2022年2月期', quarter:'第1四半期', inventory:59391},
@@ -347,17 +365,20 @@ document.getElementById('unitSelect').addEventListener('change', (e) => {
 });
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 
-const FIELDS = ['sales','cogs','inventory','receivables','payables','opIncome','sga'];
+const FIELDS = ['sales','cogs','inventory','receivables','payables','opIncome','sga','equity','totalAssets','dividend','netIncome'];
 
 function n(v){ return (v===''||v===null||v===undefined||isNaN(v)) ? null : Number(v); }
 function fmt(v, d=1){ return v===null ? '—' : v.toFixed(d); }
 
 function computed(rec){
   const inv=n(rec.inventory), cogs=n(rec.cogs), sales=n(rec.sales), rec_=n(rec.receivables), pay=n(rec.payables), op=n(rec.opIncome), sga=n(rec.sga);
+  const equity=n(rec.equity), totalAssets=n(rec.totalAssets), dividend=n(rec.dividend), netIncome=n(rec.netIncome);
   const out={};
   out.cogsRatio = (cogs!==null && sales) ? cogs/sales*100 : null;
   out.sgaRatio  = (sga!==null && sales) ? sga/sales*100 : null;
   out.opMargin  = (op!==null && sales)  ? op/sales*100 : null;
+  out.equityRatio = (equity!==null && totalAssets) ? equity/totalAssets*100 : null;
+  out.payoutRatio = (dividend!==null && netIncome) ? dividend/netIncome*100 : null;
   out.dInv = (inv!==null && cogs) ? inv/cogs*365 : null;
   out.dRec = (rec_!==null && sales) ? rec_/sales*365 : null;
   out.dPay = (pay!==null && cogs) ? pay/cogs*365 : null;
@@ -421,15 +442,19 @@ function render(){
       <td class="computed num">${fmt(c.cogsRatio)}</td>
       <td class="computed num">${fmt(c.sgaRatio)}</td>
       <td class="computed num">${fmt(c.opMargin)}</td>
+      <td class="computed num">${fmt(c.equityRatio)}</td>
+      <td class="computed num">${fmt(c.payoutRatio)}</td>
       <td class="computed num">${fmt(c.dInv)}</td>
       <td class="computed num">${fmt(c.dRec)}</td>
       <td class="computed num">${fmt(c.dPay)}</td>
       <td class="ccc-cell num ${cccClass}">${fmt(c.ccc)}</td>
+      <td><input class="memo-input" data-field="memo" data-id="${rec.id}" value="${(rec.memo||'').replace(/"/g,'&quot;')}" placeholder="例：コロナ影響、原材料高騰など"></td>
     `;
     body.appendChild(tr);
   });
 
-  body.querySelectorAll('input').forEach(inp => inp.addEventListener('input', onFieldChange));
+  body.querySelectorAll('input[type=number]').forEach(inp => inp.addEventListener('input', onFieldChange));
+  body.querySelectorAll('input.year-input, input.memo-input').forEach(inp => inp.addEventListener('change', onFieldChange));
   body.querySelectorAll('[data-del]').forEach(btn => {
     btn.addEventListener('click', () => {
       companies[currentCompany].records = records().filter(r => r.id !== btn.dataset.del);
@@ -438,6 +463,7 @@ function render(){
   });
 
   renderStamps();
+  renderMemoList();
   renderCharts();
   renderQuarters();
 }
@@ -446,7 +472,7 @@ function onFieldChange(e){
   const id = e.target.dataset.id, field = e.target.dataset.field;
   const rec = records().find(r => r.id === id);
   if(!rec) return;
-  rec[field] = field === 'year' ? e.target.value : (e.target.value === '' ? null : Number(e.target.value));
+  rec[field] = (field === 'year' || field === 'memo') ? e.target.value : (e.target.value === '' ? null : Number(e.target.value));
   render();
 }
 
@@ -498,6 +524,22 @@ document.getElementById('addQuarterBtn').addEventListener('click', () => {
 });
 
 /* ================= stamps ================= */
+function renderMemoList(){
+  const list = document.getElementById('memoList');
+  const recs = records();
+  const withMemo = recs.filter(r => r.memo && r.memo.trim() !== '');
+  if(withMemo.length === 0){
+    list.innerHTML = '<div class="empty-note">「入力」タブの年度表にある「メモ」欄に、その期に起きた出来事（コロナ・地震・戦争・為替急変など）を書き込むと、ここに一覧表示されます。</div>';
+    return;
+  }
+  list.innerHTML = withMemo.map(r => `
+    <div style="padding:8px 0; border-bottom:1px solid #1e2734;">
+      <span style="font-family:'Shippori Mincho',serif; color:var(--gold); font-weight:700;">${r.year}</span>
+      <span style="color:var(--text); margin-left:8px; font-size:13px;">${String(r.memo).replace(/</g,'&lt;')}</span>
+    </div>
+  `).join('');
+}
+
 function renderStamps(){
   const wrap = document.getElementById('stamps');
   wrap.innerHTML = '';
@@ -838,6 +880,11 @@ function renderCharts(){
   ], {decimals:1});
   renderMarginInsight();
 
+  renderLineChart('capitalChart', labels, [
+    {label:'自己資本比率', color:'#5c8a5c', data: recs.map(r=>computed(r).equityRatio)},
+    {label:'配当性向', color:'#c9a227', data: recs.map(r=>computed(r).payoutRatio)},
+  ], {decimals:1});
+
   renderBarLineChart('salesChart', labels,
     [
       {label:'売上高', color:'rgba(201,162,39,.75)', data: recs.map(r=>n(r.sales))},
@@ -882,7 +929,7 @@ async function gasLoad(){
     let rIdx=1, qIdx=1;
     const newRecords = (data.records||[]).map(r => ({
       id:'r'+(rIdx++), year:r.year||'', sales:n(r.sales), cogs:n(r.cogs), inventory:n(r.inventory),
-      receivables:n(r.receivables), payables:n(r.payables), opIncome:n(r.opIncome), sga:n(r.sga)
+      receivables:n(r.receivables), payables:n(r.payables), opIncome:n(r.opIncome), sga:n(r.sga), equity:n(r.equity), totalAssets:n(r.totalAssets), dividend:n(r.dividend), netIncome:n(r.netIncome), memo:r.memo||''
     }));
     const newQuarters = (data.quarters||[]).map(q => ({ id:'q'+(qIdx++), year:q.year||'', quarter:q.quarter||'期末', inventory:n(q.inventory) }));
     if(newRecords.length) companies[currentCompany].records = newRecords;
@@ -903,7 +950,7 @@ function gasSave(){
   if(!url){ alert('スプレッドシートのURLを入力してください。'); return; }
   setGasStatus('保存中…');
   const payload = JSON.stringify({
-    records: records().map(r => ({year:r.year, sales:r.sales, cogs:r.cogs, inventory:r.inventory, receivables:r.receivables, payables:r.payables, opIncome:r.opIncome, sga:r.sga})),
+    records: records().map(r => ({year:r.year, sales:r.sales, cogs:r.cogs, inventory:r.inventory, receivables:r.receivables, payables:r.payables, opIncome:r.opIncome, sga:r.sga, equity:r.equity, totalAssets:r.totalAssets, dividend:r.dividend, netIncome:r.netIncome, memo:r.memo||''})),
     quarters: quarters().map(q => ({year:q.year, quarter:q.quarter, inventory:q.inventory}))
   });
 
@@ -941,10 +988,10 @@ function csvEscape(v){
   return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
 }
 function buildCSV(){
-  const header = ['type','year','quarter','sales','cogs','inventory','receivables','payables','opIncome','sga'];
+  const header = ['type','year','quarter','sales','cogs','inventory','receivables','payables','opIncome','sga','equity','totalAssets','dividend','netIncome','memo'];
   const rows = [header.join(',')];
-  records().forEach(r => rows.push(['annual', r.year, '', r.sales, r.cogs, r.inventory, r.receivables, r.payables, r.opIncome, r.sga].map(csvEscape).join(',')));
-  quarters().forEach(q => rows.push(['quarterly', q.year, q.quarter, '', '', q.inventory, '', '', '', ''].map(csvEscape).join(',')));
+  records().forEach(r => rows.push(['annual', r.year, '', r.sales, r.cogs, r.inventory, r.receivables, r.payables, r.opIncome, r.sga, r.equity, r.totalAssets, r.dividend, r.netIncome, r.memo||''].map(csvEscape).join(',')));
+  quarters().forEach(q => rows.push(['quarterly', q.year, q.quarter, '', '', q.inventory, '', '', '', '', '', '', '', '', ''].map(csvEscape).join(',')));
   return rows.join('\n');
 }
 function downloadCSV(){
@@ -972,8 +1019,8 @@ function importCSV(text){
   const newRecords=[], newQuarters=[]; let rIdx=1, qIdx=1;
   for(let i=1;i<lines.length;i++){
     const cols = parseCSVLine(lines[i]);
-    const [type, year, quarter, sales, cogs, inventory, receivables, payables, opIncome, sga] = cols;
-    if(type==='annual') newRecords.push({id:'r'+(rIdx++), year:year||'', sales:n(sales), cogs:n(cogs), inventory:n(inventory), receivables:n(receivables), payables:n(payables), opIncome:n(opIncome), sga:n(sga)});
+    const [type, year, quarter, sales, cogs, inventory, receivables, payables, opIncome, sga, equity, totalAssets, dividend, netIncome, memo] = cols;
+    if(type==='annual') newRecords.push({id:'r'+(rIdx++), year:year||'', sales:n(sales), cogs:n(cogs), inventory:n(inventory), receivables:n(receivables), payables:n(payables), opIncome:n(opIncome), sga:n(sga), equity:n(equity), totalAssets:n(totalAssets), dividend:n(dividend), netIncome:n(netIncome), memo:memo||''});
     else if(type==='quarterly') newQuarters.push({id:'q'+(qIdx++), year:year||'', quarter:quarter||'期末', inventory:n(inventory)});
   }
   if(newRecords.length===0 && newQuarters.length===0){ alert('データが見つかりませんでした。CSVの形式を確認してください。'); return; }
@@ -993,7 +1040,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
 });
 
 document.getElementById('addRowBtn').addEventListener('click', () => {
-  records().push({id:'r'+Date.now(), year:'新年度', sales:null, cogs:null, inventory:null, receivables:null, payables:null, opIncome:null, sga:null});
+  records().push({id:'r'+Date.now(), year:'新年度', sales:null, cogs:null, inventory:null, receivables:null, payables:null, opIncome:null, sga:null, equity:null, totalAssets:null, dividend:null, netIncome:null, memo:''});
   render();
 });
 document.getElementById('resetBtn').addEventListener('click', () => {
