@@ -1148,6 +1148,28 @@ function updateGasCompanyLabel(){
   if(btn) btn.textContent = '保存する（' + currentCompany + '）';
 }
 
+function gasListCompanies(){
+  const url = gasUrl();
+  if(!url) return;
+  const cbName = 'gasListCb_' + Date.now();
+  const timeout = setTimeout(() => { delete window[cbName]; }, 10000);
+  window[cbName] = function(data){
+    clearTimeout(timeout);
+    (data.companies || []).forEach(name => {
+      if(name && !companies[name]){
+        companies[name] = { records: [], quarters: [], unit: '百万円' };
+      }
+    });
+    renderCompanySelect();
+    delete window[cbName];
+    script.remove();
+  };
+  const script = document.createElement('script');
+  script.src = url + (url.includes('?') ? '&' : '?') + 'listCompanies=1&callback=' + cbName;
+  script.onerror = () => { clearTimeout(timeout); delete window[cbName]; };
+  document.body.appendChild(script);
+}
+
 async function gasLoad(){
   const url = gasUrl();
   if(!url){ alert('スプレッドシートのURLを入力してください。'); return; }
@@ -1296,6 +1318,7 @@ updateGasCompanyLabel();
 applyUnitLabels();
 renderEvents();
 render();
+if(gasUrl()) gasListCompanies();
 </script>
 </body>
 </html>
