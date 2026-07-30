@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>決算書捜査ファイル | データ探偵事務所</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1117; --panel:#151c26; --panel-2:#1b2430; --line:#2a3441;
+    --paper:#f4ecd8; --gold:#c9a227; --gold-soft:#9c8043;
+    --red:#b8433a; --green:#5c8a5c;
+    --text:#e8e3d5; --text-dim:#8b93a1; --text-faint:#5b6472;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(ellipse at top left, #16202c 0%, transparent 55%), var(--ink);
+    color:var(--text); font-family:"Noto Sans JP", sans-serif;
+    -webkit-font-smoothing:antialiased; padding-bottom:60px;
+  }
+  .num{font-family:"JetBrains Mono", monospace; font-variant-numeric: tabular-nums;}
+  header{position:relative; padding:28px 20px 22px; max-width:1080px; margin:0 auto;}
+  .tab-badge{
+    display:inline-flex; align-items:center; gap:10px; background:var(--gold); color:#1a1206;
+    font-family:"Shippori Mincho", serif; font-weight:700; font-size:13px; letter-spacing:.08em;
+    padding:6px 16px 6px 14px; border-radius:2px 10px 2px 2px; box-shadow:0 3px 8px rgba(0,0,0,.35);
+  }
+  h1{font-family:"Shippori Mincho", serif; font-weight:800; font-size:clamp(26px,5vw,38px); margin:14px 0 4px; letter-spacing:.02em;}
+  .sub{color:var(--text-dim); font-size:13px; letter-spacing:.03em;}
+  .rule{height:1px; background:linear-gradient(90deg,var(--gold) 0%, var(--line) 40%); margin-top:16px;}
+  main{max-width:1080px; margin:0 auto; padding:0 20px;}
+
+  .meta-bar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:22px 0 18px;}
+  select#companySelect{
+    background:#0f151d; border:1px solid var(--line); border-bottom:2px solid var(--gold);
+    color:var(--text); font-family:"Shippori Mincho",serif; font-size:18px; font-weight:700;
+    padding:6px 10px; border-radius:4px; min-width:180px;
+  }
+  select#companySelect:focus{outline:none;}
+  .pill-btn{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    font-size:12.5px; padding:8px 14px; border-radius:20px; cursor:pointer; transition:.15s; letter-spacing:.02em;
+  }
+  .pill-btn:hover{border-color:var(--gold); color:var(--gold);}
+  .pill-btn.primary{background:var(--gold); color:#1a1206; border-color:var(--gold); font-weight:700;}
+  .pill-btn.primary:hover{background:#e0b62f;}
+
+  .main-tabs{display:flex; gap:6px; margin:6px 0 20px; border-bottom:1px solid var(--line);}
+  .main-tab-btn{
+    background:none; border:none; color:var(--text-dim); font-family:"Shippori Mincho",serif;
+    font-size:15px; font-weight:700; padding:10px 18px; cursor:pointer; border-bottom:2px solid transparent;
+    margin-bottom:-1px; letter-spacing:.03em;
+  }
+  .main-tab-btn.active{color:var(--gold); border-bottom-color:var(--gold);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .stamps{display:flex; flex-wrap:wrap; gap:12px; margin-bottom:24px;}
+  .stamp{flex:1; min-width:150px; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--gold-soft); border-radius:4px; padding:14px 16px;}
+  .stamp .label{font-size:11px; color:var(--text-faint); letter-spacing:.08em; text-transform:uppercase;}
+  .stamp .value{font-family:"JetBrains Mono",monospace; font-size:26px; font-weight:700; margin-top:4px;}
+  .stamp .delta{font-size:12px; margin-top:3px; color:var(--text-dim);}
+  .stamp.warn{border-left-color:var(--red);} .stamp.warn .value{color:var(--red);}
+  .stamp.good{border-left-color:var(--green);} .stamp.good .value{color:var(--green);}
+
+  .ledger-wrap{background:var(--panel); border:1px solid var(--line); border-radius:6px; overflow-x:auto; margin-bottom:22px;}
+  table{border-collapse:collapse; width:100%; min-width:920px;}
+  thead th{font-family:"Shippori Mincho",serif; font-size:12px; font-weight:700; color:var(--gold); text-align:right; padding:12px 10px; border-bottom:1px solid var(--line); white-space:nowrap; letter-spacing:.03em;}
+  thead th:first-child, thead th:nth-child(2){text-align:left;}
+  tbody td{padding:8px 10px; border-bottom:1px solid #1e2734; text-align:right; font-size:13px; white-space:nowrap;}
+  tbody td:first-child, tbody td:nth-child(2){text-align:left;}
+  tbody tr:hover{background:#182031;}
+  tbody input{width:88px; background:#0f151d; border:1px solid var(--line); color:var(--text); font-family:"JetBrains Mono",monospace; font-size:12.5px; padding:5px 6px; border-radius:3px; text-align:right;}
+  tbody input:focus{outline:none; border-color:var(--gold);}
+  tbody input.year-input{font-family:"Noto Sans JP",sans-serif; text-align:left; width:110px;}
+  tbody select{background:#0f151d; border:1px solid var(--line); color:var(--text); font-family:"Noto Sans JP",sans-serif; font-size:12.5px; padding:5px 6px; border-radius:3px;}
+  tbody select:focus{outline:none; border-color:var(--gold);}
+  .computed{color:var(--text-dim);}
+  .ccc-cell{font-weight:700; color:var(--paper);}
+  .ccc-up{color:var(--red);} .ccc-down{color:var(--green);}
+  .del-btn{background:none; border:none; color:var(--text-faint); cursor:pointer; font-size:15px; padding:2px 6px;}
+  .del-btn:hover{color:var(--red);}
+
+  .section-label{font-family:"Shippori Mincho",serif; font-size:15px; font-weight:700; color:var(--gold); margin:30px 0 12px; display:flex; align-items:center; gap:8px;}
+  .section-label::before{content:"◆"; font-size:11px;}
+  .section-label.first{margin-top:0;}
+
+  .chart-card{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:18px 18px 16px; margin-bottom:20px;}
+  .chart-card h3{font-family:"Shippori Mincho",serif; font-size:13px; color:var(--text-dim); margin:0 0 12px; font-weight:500; letter-spacing:.04em;}
+  .chart-box{width:100%;}
+  .insight{margin-top:14px; padding:10px 14px; background:#0f151d; border-left:3px solid var(--gold); border-radius:3px; font-size:12.5px; line-height:1.7; color:var(--text);}
+  .insight b{color:var(--gold);}
+  .empty-note{color:var(--text-faint); font-size:12.5px; padding:20px 0; text-align:center;}
+
+  .footnote{font-size:11.5px; color:var(--text-faint); line-height:1.7; margin-top:6px; border-top:1px dashed var(--line); padding-top:12px;}
+  .unit-note{font-size:11.5px; color:var(--text-faint);}
+  .io-row{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:16px 0 8px;}
+  input[type=file]{display:none;}
+  ::selection{background:var(--gold); color:#1a1206;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tab-badge">捜査ファイル No. 001</div>
+  <h1>決算書捜査ファイル</h1>
+  <div class="sub">データ探偵事務所 — CCC・利益率・売上分解 自動計算ツール</div>
+  <div class="rule"></div>
+</header>
+
+<main>
+  <div class="meta-bar">
+    <select id="companySelect"></select>
+    <button class="pill-btn" id="addCompanyBtn">＋ 企業を追加</button>
+    <span class="unit-note" style="margin-left:auto;">単位：百万円 / 連結ベース</span>
+  </div>
+
+  <div class="main-tabs">
+    <button class="main-tab-btn active" data-tab="dashboard">ダッシュボード</button>
+    <button class="main-tab-btn" data-tab="input">入力</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-dashboard">
+    <div class="stamps" id="stamps"></div>
+
+    <div class="section-label first">売上高・利益の推移</div>
+    <div class="chart-card">
+      <h3>売上高・売上原価（棒）／営業利益（線）／単位：百万円</h3>
+      <div class="chart-box" id="salesChart"></div>
+    </div>
+
+    <div class="section-label">在庫・売掛金・買掛金の推移</div>
+    <div class="chart-card">
+      <h3>期末残高（百万円）</h3>
+      <div class="chart-box" id="balanceChart"></div>
+    </div>
+
+    <div class="section-label">CCCの推移</div>
+    <div class="chart-card">
+      <h3>キャッシュ・コンバージョン・サイクル（日）</h3>
+      <div class="chart-box" id="cccChart"></div>
+      <div class="insight" id="cccInsight"></div>
+    </div>
+
+    <div class="section-label">利益率の推移</div>
+    <div class="chart-card">
+      <h3>原価率・販管費率・営業利益率（%）</h3>
+      <div class="chart-box" id="marginChart"></div>
+      <div class="insight" id="marginInsight"></div>
+    </div>
+
+    <div class="section-label">四半期の季節パターン</div>
+    <div class="chart-card">
+      <h3>四半期末 商品残高（百万円）— 年またぎ比較</h3>
+      <div class="chart-box" id="quarterChart"></div>
+      <div class="insight" id="quarterInsight"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-input">
+    <div class="io-row">
+      <input type="text" id="gasUrlInput" placeholder="GASウェブアプリURL" value="https://script.google.com/macros/s/AKfycbyhvxOIqi6VQbjLbDSwRs0ab3DIeibiTy4tlQScmURWR1xYbzxODHWW7QURXhgQq2-o/exec" style="flex:1; min-width:260px; background:#0f151d; border:1px solid var(--line); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:11.5px; padding:8px 10px; border-radius:4px;">
+      <button class="pill-btn primary" id="gasLoadBtn">スプレッドシートから読み込む</button>
+      <button class="pill-btn primary" id="gasSaveBtn">スプレッドシートに保存する</button>
+    </div>
+    <div class="footnote" id="gasStatus" style="border-top:none; padding-top:0;"></div>
+    <div class="footnote">
+      現在選択中の企業（<span id="gasCompanyLabel"></span>）のデータを、このURL先のスプレッドシートと同期します。保存は現在のデータでシートを上書き、読み込みはシートの内容でこの画面を上書きします。
+    </div>
+
+    <div class="io-row">
+      <button class="pill-btn" id="exportBtn">CSVをダウンロード（バックアップ用）</button>
+      <button class="pill-btn" id="importBtn">CSVを読み込む</button>
+      <input type="file" id="importFile" accept=".csv">
+      <button class="pill-btn" id="resetBtn">この企業をリセット</button>
+    </div>
+    <div class="footnote">
+      作業内容はページを閉じると消えます。GAS連携での保存を基本にし、CSVは念のためのバックアップとして使ってください。
+    </div>
+
+    <div class="section-label first">元帳 — 年度別データ</div>
+    <div class="meta-bar" style="margin:0 0 10px;">
+      <button class="pill-btn primary" id="addRowBtn">＋ 年度を追加</button>
+    </div>
+    <div class="ledger-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>年度</th><th></th>
+            <th>売上高</th><th>売上原価</th><th>商品(棚卸)</th><th>売掛金</th><th>買掛金</th>
+            <th>営業利益</th><th>販管費</th>
+            <th>原価率%</th><th>販管費率%</th><th>営業利益率%</th>
+            <th>在庫日数</th><th>売掛日数</th><th>買掛日数</th><th>CCC</th>
+          </tr>
+        </thead>
+        <tbody id="ledgerBody"></tbody>
+      </table>
+    </div>
+    <div class="footnote">
+      CCC = 在庫回転日数 + 売掛金回転日数 − 買掛金回転日数（365日ベース）。空欄がある年度は、それに依存する指標のみ計算されません。
+    </div>
+
+    <div class="section-label">四半期ウォッチ — 商品(棚卸資産)</div>
+    <div class="meta-bar" style="margin:0 0 10px;">
+      <button class="pill-btn" id="addQuarterBtn">＋ 四半期データを追加</button>
+    </div>
+    <div class="ledger-wrap">
+      <table>
+        <thead><tr><th>年度</th><th>四半期</th><th>商品(棚卸)</th><th></th></tr></thead>
+        <tbody id="quarterBody"></tbody>
+      </table>
+    </div>
+    <div class="footnote">
+      期末以外（第1〜第3四半期）の商品残高を入れると、ダッシュボードの季節パターン比較グラフと自動コメントに反映されます。
+    </div>
+  </div>
+</main>
+
+<script>
+/* ================= data model ================= */
+const QUARTER_OPTIONS = ['第1四半期','第2四半期','第3四半期','期末'];
+
+const SHIMAMURA_RECORDS = [
+  {id:'r1', year:'2022年2月期', sales:583618, cogs:384687, inventory:52599, receivables:8509, payables:28425, opIncome:49420, sga:150663},
+  {id:'r2', year:'2023年2月期', sales:616125, cogs:406129, inventory:54266, receivables:10217, payables:24285, opIncome:53302, sga:158088},
+  {id:'r3', year:'2024年2月期', sales:635091, cogs:416529, inventory:57146, receivables:12349, payables:24625, opIncome:55308, sga:164662},
+  {id:'r4', year:'2025年2月期', sales:665358, cogs:434475, inventory:56829, receivables:13726, payables:24066, opIncome:59240, sga:173026},
+  {id:'r5', year:'2026年2月期', sales:700034, cogs:456130, inventory:60923, receivables:15000, payables:25696, opIncome:61483, sga:183771},
+];
+const SHIMAMURA_QUARTERS = [
+  {id:'q1',  year:'2022年2月期', quarter:'第1四半期', inventory:59391},
+  {id:'q2',  year:'2022年2月期', quarter:'第2四半期', inventory:48564},
+  {id:'q3',  year:'2022年2月期', quarter:'第3四半期', inventory:63021},
+  {id:'q4',  year:'2022年2月期', quarter:'期末',       inventory:52599},
+  {id:'q5',  year:'2023年2月期', quarter:'第1四半期', inventory:61866},
+  {id:'q6',  year:'2023年2月期', quarter:'第2四半期', inventory:53070},
+  {id:'q7',  year:'2023年2月期', quarter:'第3四半期', inventory:71496},
+  {id:'q8',  year:'2023年2月期', quarter:'期末',       inventory:54266},
+  {id:'q9',  year:'2024年2月期', quarter:'第1四半期', inventory:68153},
+  {id:'q10', year:'2024年2月期', quarter:'第2四半期', inventory:52810},
+  {id:'q11', year:'2024年2月期', quarter:'第3四半期', inventory:72035},
+  {id:'q12', year:'2024年2月期', quarter:'期末',       inventory:57146},
+  {id:'q13', year:'2025年2月期', quarter:'第1四半期', inventory:70354},
+  {id:'q14', year:'2025年2月期', quarter:'第2四半期', inventory:52363},
+  {id:'q15', year:'2025年2月期', quarter:'第3四半期', inventory:75413},
+  {id:'q16', year:'2025年2月期', quarter:'期末',       inventory:56829},
+  {id:'q17', year:'2026年2月期', quarter:'第1四半期', inventory:74779},
+  {id:'q18', year:'2026年2月期', quarter:'第2四半期', inventory:55797},
+  {id:'q19', year:'2026年2月期', quarter:'第3四半期', inventory:78669},
+  {id:'q20', year:'2026年2月期', quarter:'期末',       inventory:60923},
+];
+
+let companies = {
+  'しまむら': { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS) }
+};
+let currentCompany = 'しまむら';
+
+function records(){ return companies[currentCompany].records; }
+function quarters(){ return companies[currentCompany].quarters; }
+
+const FIELDS = ['sales','cogs','inventory','receivables','payables','opIncome','sga'];
+
+function n(v){ return (v===''||v===null||v===undefined||isNaN(v)) ? null : Number(v); }
+function fmt(v, d=1){ return v===null ? '—' : v.toFixed(d); }
+
+function computed(rec){
+  const inv=n(rec.inventory), cogs=n(rec.cogs), sales=n(rec.sales), rec_=n(rec.receivables), pay=n(rec.payables), op=n(rec.opIncome), sga=n(rec.sga);
+  const out={};
+  out.cogsRatio = (cogs!==null && sales) ? cogs/sales*100 : null;
+  out.sgaRatio  = (sga!==null && sales) ? sga/sales*100 : null;
+  out.opMargin  = (op!==null && sales)  ? op/sales*100 : null;
+  out.dInv = (inv!==null && cogs) ? inv/cogs*365 : null;
+  out.dRec = (rec_!==null && sales) ? rec_/sales*365 : null;
+  out.dPay = (pay!==null && cogs) ? pay/cogs*365 : null;
+  out.ccc  = (out.dInv!==null && out.dRec!==null && out.dPay!==null) ? out.dInv + out.dRec - out.dPay : null;
+  return out;
+}
+
+/* ================= company selector ================= */
+function renderCompanySelect(){
+  const sel = document.getElementById('companySelect');
+  sel.innerHTML = Object.keys(companies).map(name =>
+    `<option value="${name}" ${name===currentCompany?'selected':''}>${name}</option>`
+  ).join('');
+}
+document.getElementById('companySelect').addEventListener('change', (e) => {
+  currentCompany = e.target.value;
+  updateGasCompanyLabel();
+  render();
+});
+document.getElementById('addCompanyBtn').addEventListener('click', () => {
+  const name = prompt('企業名を入力してください');
+  if(!name || !name.trim()) return;
+  const clean = name.trim();
+  if(companies[clean]){ alert('その企業はすでにあります。'); currentCompany = clean; renderCompanySelect(); render(); return; }
+  companies[clean] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null}], quarters: [] };
+  currentCompany = clean;
+  renderCompanySelect();
+  updateGasCompanyLabel();
+  render();
+});
+
+/* ================= main tab switching ================= */
+document.querySelectorAll('.main-tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.main-tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ================= ledger render ================= */
+function render(){
+  const body = document.getElementById('ledgerBody');
+  body.innerHTML = '';
+  const recs = records();
+  const cccVals = recs.map(computed);
+
+  recs.forEach((rec, i) => {
+    const c = cccVals[i];
+    const prevCcc = i>0 ? cccVals[i-1].ccc : null;
+    let cccClass = '';
+    if(c.ccc!==null && prevCcc!==null) cccClass = c.ccc > prevCcc ? 'ccc-up' : (c.ccc < prevCcc ? 'ccc-down' : '');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input class="year-input" data-field="year" data-id="${rec.id}" value="${rec.year}"></td>
+      <td><button class="del-btn" data-del="${rec.id}" title="削除">✕</button></td>
+      ${FIELDS.map(f => `<td><input type="number" data-field="${f}" data-id="${rec.id}" value="${rec[f]===null||rec[f]===undefined?'':rec[f]}"></td>`).join('')}
+      <td class="computed num">${fmt(c.cogsRatio)}</td>
+      <td class="computed num">${fmt(c.sgaRatio)}</td>
+      <td class="computed num">${fmt(c.opMargin)}</td>
+      <td class="computed num">${fmt(c.dInv)}</td>
+      <td class="computed num">${fmt(c.dRec)}</td>
+      <td class="computed num">${fmt(c.dPay)}</td>
+      <td class="ccc-cell num ${cccClass}">${fmt(c.ccc)}</td>
+    `;
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll('input').forEach(inp => inp.addEventListener('input', onFieldChange));
+  body.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      companies[currentCompany].records = records().filter(r => r.id !== btn.dataset.del);
+      render();
+    });
+  });
+
+  renderStamps();
+  renderCharts();
+  renderQuarters();
+}
+
+function onFieldChange(e){
+  const id = e.target.dataset.id, field = e.target.dataset.field;
+  const rec = records().find(r => r.id === id);
+  if(!rec) return;
+  rec[field] = field === 'year' ? e.target.value : (e.target.value === '' ? null : Number(e.target.value));
+  render();
+}
+
+/* ================= quarterly render ================= */
+function renderQuarters(){
+  const body = document.getElementById('quarterBody');
+  body.innerHTML = '';
+  quarters().forEach(q => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input class="year-input" data-qfield="year" data-qid="${q.id}" value="${q.year}"></td>
+      <td><select data-qfield="quarter" data-qid="${q.id}">
+        ${QUARTER_OPTIONS.map(o => `<option value="${o}" ${o===q.quarter?'selected':''}>${o}</option>`).join('')}
+      </select></td>
+      <td><input type="number" data-qfield="inventory" data-qid="${q.id}" value="${q.inventory===null||q.inventory===undefined?'':q.inventory}"></td>
+      <td><button class="del-btn" data-qdel="${q.id}" title="削除">✕</button></td>
+    `;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('[data-qfield]').forEach(inp => {
+    inp.addEventListener('input', onQuarterChange);
+    inp.addEventListener('change', onQuarterChange);
+  });
+  body.querySelectorAll('[data-qdel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      companies[currentCompany].quarters = quarters().filter(q => q.id !== btn.dataset.qdel);
+      renderQuarters(); renderQuarterChart(); renderQuarterInsight();
+    });
+  });
+  renderQuarterChart();
+  renderQuarterInsight();
+}
+
+function onQuarterChange(e){
+  const id = e.target.dataset.qid, field = e.target.dataset.qfield;
+  const q = quarters().find(x => x.id === id);
+  if(!q) return;
+  q[field] = field === 'inventory' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value;
+  renderQuarterChart();
+  renderQuarterInsight();
+}
+
+document.getElementById('addQuarterBtn').addEventListener('click', () => {
+  const id = 'q' + Date.now();
+  const qs = quarters();
+  const lastYear = qs.length ? qs[qs.length-1].year : '新年度';
+  qs.push({id, year:lastYear, quarter:'第1四半期', inventory:null});
+  renderQuarters();
+});
+
+/* ================= stamps ================= */
+function renderStamps(){
+  const wrap = document.getElementById('stamps');
+  wrap.innerHTML = '';
+  const recs = records();
+  if(recs.length === 0){ wrap.innerHTML = '<div class="stamp">データがありません</div>'; return; }
+  const last = computed(recs[recs.length-1]);
+  const prev = recs.length>1 ? computed(recs[recs.length-2]) : null;
+  const cards = [
+    {label:'最新CCC', value:last.ccc, prev: prev? prev.ccc: null, unit:'日', invert:true},
+    {label:'営業利益率', value:last.opMargin, prev: prev? prev.opMargin: null, unit:'%', invert:false},
+    {label:'原価率', value:last.cogsRatio, prev: prev? prev.cogsRatio: null, unit:'%', invert:true},
+  ];
+  cards.forEach(c => {
+    let cls = '';
+    if(c.value!==null && c.prev!==null){
+      const worse = c.invert ? c.value > c.prev : c.value < c.prev;
+      const better = c.invert ? c.value < c.prev : c.value > c.prev;
+      if(worse) cls='warn'; else if(better) cls='good';
+    }
+    const delta = (c.value!==null && c.prev!==null) ? (c.value-c.prev) : null;
+    const div = document.createElement('div');
+    div.className = 'stamp ' + cls;
+    div.innerHTML = `
+      <div class="label">${c.label}</div>
+      <div class="value num">${fmt(c.value)}${c.unit}</div>
+      <div class="delta num">${delta===null ? '前期データなし' : (delta>=0?'+':'')+delta.toFixed(1)+c.unit+' 前期比'}</div>
+    `;
+    wrap.appendChild(div);
+  });
+}
+
+/* ================= insights ================= */
+function renderCCCInsight(){
+  const el = document.getElementById('cccInsight');
+  const recs = records();
+  if(recs.length<2){ el.textContent='年度が2つ以上ないと前期比較はできません。'; return; }
+  const cur = computed(recs[recs.length-1]), prev = computed(recs[recs.length-2]);
+  if(cur.ccc===null || prev.ccc===null){ el.textContent='在庫・売掛金・買掛金のいずれかが未入力のため判定できません。'; return; }
+  const diff = cur.ccc-prev.ccc;
+  const contributions = [
+    {name:'在庫の回転(仕入→販売)', val: cur.dInv-prev.dInv},
+    {name:'売掛金の回収', val: cur.dRec-prev.dRec},
+    {name:'買掛金の支払サイト', val: -(cur.dPay-prev.dPay)},
+  ];
+  contributions.sort((a,b)=>Math.abs(b.val)-Math.abs(a.val));
+  const dom = contributions[0];
+  const direction = diff>0.05 ? '悪化（現金化が遅くなった）' : diff<-0.05 ? '改善（現金化が速くなった）' : 'ほぼ横ばい';
+  el.innerHTML = `CCCは前期比 <b>${diff>=0?'+':''}${diff.toFixed(1)}日</b> で${direction}。最も寄与が大きいのは<b>${dom.name}</b>の変化（${dom.val>=0?'+':''}${dom.val.toFixed(1)}日相当）。単発の振れか複数期続くトレンドかは年度を追加して確認するのが確実。`;
+}
+
+function renderMarginInsight(){
+  const el = document.getElementById('marginInsight');
+  const recs = records();
+  if(recs.length<2){ el.textContent='年度が2つ以上ないと前期比較はできません。'; return; }
+  const cur = computed(recs[recs.length-1]), prev = computed(recs[recs.length-2]);
+  if(cur.opMargin===null || prev.opMargin===null){ el.textContent='営業利益または売上高が未入力のため判定できません。'; return; }
+  const diffOp = cur.opMargin - prev.opMargin;
+  let driverText = '';
+  if(cur.cogsRatio!==null && prev.cogsRatio!==null && cur.sgaRatio!==null && prev.sgaRatio!==null){
+    const dCogs = cur.cogsRatio-prev.cogsRatio, dSga = cur.sgaRatio-prev.sgaRatio;
+    driverText = Math.abs(dCogs) >= Math.abs(dSga)
+      ? `主因は原価率の変化（${dCogs>=0?'+':''}${dCogs.toFixed(1)}pt）— 仕入コストや商品構成の変化を疑う。`
+      : `主因は販管費率の変化（${dSga>=0?'+':''}${dSga.toFixed(1)}pt）— 人件費や広告宣伝費など固定費側の増減を疑う。`;
+  }
+  el.innerHTML = `営業利益率は前期比 <b>${diffOp>=0?'+':''}${diffOp.toFixed(1)}pt</b>（${diffOp>=0?'改善':'悪化'}）。${driverText}`;
+}
+
+function renderQuarterInsight(){
+  const el = document.getElementById('quarterInsight');
+  const qs = quarters();
+  const years = [...new Set(qs.map(q=>q.year))];
+  if(years.length<2){ el.textContent='比較できる年度が2つ以上ありません。'; return; }
+  const y1 = years[years.length-2], y2 = years[years.length-1];
+  const diffs = QUARTER_OPTIONS.map(qtr=>{
+    const a = qs.find(q=>q.year===y1 && q.quarter===qtr);
+    const b = qs.find(q=>q.year===y2 && q.quarter===qtr);
+    if(!a||!b|| a.inventory==null || b.inventory==null) return null;
+    return {qtr, pct:(b.inventory-a.inventory)/a.inventory*100};
+  }).filter(d=>d!==null);
+  if(diffs.length===0){ el.textContent='比較できる四半期データがありません。'; return; }
+  const vals = diffs.map(d=>d.pct);
+  const avg = vals.reduce((s,v)=>s+v,0)/vals.length;
+  const spread = Math.max(...vals)-Math.min(...vals);
+  if(spread < 5){
+    el.innerHTML = `${y1}→${y2}にかけて、四半期を通じてほぼ一律（平均 <b>${avg>=0?'+':''}${avg.toFixed(1)}%</b>）の増減。特定の季節だけでなく年間を通じた変化なので、季節要因より<b>構造的な変化</b>の可能性が高い。`;
+  }else{
+    const maxD = diffs.reduce((a,b)=>a.pct>b.pct?a:b), minD = diffs.reduce((a,b)=>a.pct<b.pct?a:b);
+    el.innerHTML = `${y1}→${y2}の増減率は四半期ごとにばらつきが大きい（${minD.qtr}: ${minD.pct.toFixed(1)}% 〜 ${maxD.qtr}: ${maxD.pct.toFixed(1)}%）。特定の時期に偏っており、<b>季節要因</b>の影響を疑うべきパターン。`;
+  }
+}
+
+/* ================= dependency-free SVG charts ================= */
+function svgEscapeText(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderLineChart(containerId, labels, series, opts={}){
+  const el = document.getElementById(containerId);
+  const valid = series.some(s => s.data.some(v => v!==null && v!==undefined));
+  if(!valid || labels.length===0){ el.innerHTML = '<div class="empty-note">データを入力するとここにグラフが表示されます</div>'; return; }
+
+  const width=900, height=240, padL=54, padR=16, padT=16, padB=30;
+  const allVals = series.flatMap(s=>s.data.filter(v=>v!==null&&v!==undefined));
+  let max = Math.max(...allVals), min = Math.min(...allVals, 0);
+  if(max===min){ max = max+1; }
+  const range = max-min;
+  const plotW = width-padL-padR, plotH = height-padT-padB;
+  const x = i => labels.length<=1 ? padL+plotW/2 : padL + (i/(labels.length-1))*plotW;
+  const y = v => padT + plotH - ((v-min)/range)*plotH;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:240px;" preserveAspectRatio="none">`;
+  for(let g=0; g<=4; g++){
+    const gy = padT + plotH*g/4;
+    const val = max - (range*g/4);
+    svg += `<line x1="${padL}" y1="${gy}" x2="${width-padR}" y2="${gy}" stroke="#2a3441" stroke-width="1"/>`;
+    svg += `<text x="${padL-8}" y="${gy+4}" font-size="10" fill="#8b93a1" text-anchor="end">${val.toFixed(opts.decimals||0)}</text>`;
+  }
+  series.forEach((s, si) => {
+    let d='';
+    labels.forEach((_, i) => {
+      const v = s.data[i];
+      if(v===null||v===undefined) return;
+      const cmd = d==='' ? 'M' : 'L';
+      d += `${cmd}${x(i).toFixed(1)},${y(v).toFixed(1)} `;
+    });
+    if(opts.area && si===0 && d!==''){
+      svg += `<path d="${d} L${x(labels.length-1).toFixed(1)},${(padT+plotH).toFixed(1)} L${x(0).toFixed(1)},${(padT+plotH).toFixed(1)} Z" fill="${s.color}" fill-opacity="0.15" stroke="none"/>`;
+    }
+    svg += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5"/>`;
+    labels.forEach((_, i) => {
+      const v = s.data[i];
+      if(v===null||v===undefined) return;
+      svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" fill="${s.color}"/>`;
+    });
+  });
+  labels.forEach((l, i) => {
+    svg += `<text x="${x(i).toFixed(1)}" y="${height-8}" font-size="10" fill="#8b93a1" text-anchor="middle">${svgEscapeText(l)}</text>`;
+  });
+  svg += '</svg>';
+
+  let legend = '';
+  if(series.length>1){
+    legend = '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:#e8e3d5;">' +
+      series.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:${s.color};display:inline-block;border-radius:2px;"></span>${svgEscapeText(s.label)}</span>`).join('') +
+      '</div>';
+  }
+  el.innerHTML = svg + legend;
+}
+
+function renderBarLineChart(containerId, labels, barSeries, lineSeries, opts={}){
+  const el = document.getElementById(containerId);
+  const anyBar = barSeries.some(s=>s.data.some(v=>v!==null&&v!==undefined));
+  if(!anyBar || labels.length===0){ el.innerHTML = '<div class="empty-note">データを入力するとここにグラフが表示されます</div>'; return; }
+
+  const width=900, height=240, padL=54, padR=54, padT=16, padB=30;
+  const barVals = barSeries.flatMap(s=>s.data.filter(v=>v!==null&&v!==undefined));
+  const maxBar = Math.max(...barVals, 1);
+  const lineVals = lineSeries.flatMap(s=>s.data.filter(v=>v!==null&&v!==undefined));
+  const maxLine = lineVals.length ? Math.max(...lineVals, 1) : 1;
+  const plotW = width-padL-padR, plotH = height-padT-padB;
+  const groupW = plotW/labels.length;
+  const barW = (groupW*0.6)/barSeries.length;
+  const yBar = v => padT + plotH - (v/maxBar)*plotH;
+  const yLine = v => padT + plotH - (v/maxLine)*plotH;
+  const xCenter = i => padL + groupW*i + groupW/2;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:240px;" preserveAspectRatio="none">`;
+  for(let g=0; g<=4; g++){
+    const gy = padT + plotH*g/4;
+    svg += `<line x1="${padL}" y1="${gy}" x2="${width-padR}" y2="${gy}" stroke="#2a3441" stroke-width="1"/>`;
+    svg += `<text x="${padL-8}" y="${gy+4}" font-size="10" fill="#8b93a1" text-anchor="end">${(maxBar-(maxBar*g/4)).toFixed(0)}</text>`;
+  }
+  barSeries.forEach((s, si) => {
+    labels.forEach((_, i) => {
+      const v = s.data[i];
+      if(v===null||v===undefined) return;
+      const gx = padL + groupW*i + groupW/2 - (barSeries.length*barW)/2 + si*barW;
+      const by = yBar(v);
+      svg += `<rect x="${gx.toFixed(1)}" y="${by.toFixed(1)}" width="${(barW*0.85).toFixed(1)}" height="${(padT+plotH-by).toFixed(1)}" fill="${s.color}"/>`;
+    });
+  });
+  lineSeries.forEach(s => {
+    let d='';
+    labels.forEach((_, i) => {
+      const v = s.data[i];
+      if(v===null||v===undefined) return;
+      const cmd = d==='' ? 'M' : 'L';
+      d += `${cmd}${xCenter(i).toFixed(1)},${yLine(v).toFixed(1)} `;
+    });
+    svg += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5"/>`;
+    labels.forEach((_, i) => {
+      const v = s.data[i];
+      if(v===null||v===undefined) return;
+      svg += `<circle cx="${xCenter(i).toFixed(1)}" cy="${yLine(v).toFixed(1)}" r="4" fill="${s.color}"/>`;
+    });
+  });
+  labels.forEach((l, i) => {
+    svg += `<text x="${xCenter(i).toFixed(1)}" y="${height-8}" font-size="10" fill="#8b93a1" text-anchor="middle">${svgEscapeText(l)}</text>`;
+  });
+  svg += '</svg>';
+
+  const legend = '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:#e8e3d5;">' +
+    [...barSeries, ...lineSeries].map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:${s.color};display:inline-block;border-radius:2px;"></span>${svgEscapeText(s.label)}</span>`).join('') +
+    '</div>';
+  el.innerHTML = svg + legend;
+}
+
+function renderGroupedBarChart(containerId, categoryLabels, groups){
+  const el = document.getElementById(containerId);
+  const anyVal = groups.some(g=>g.data.some(v=>v!==null&&v!==undefined));
+  if(!anyVal || categoryLabels.length===0){ el.innerHTML = '<div class="empty-note">四半期データを入力するとここにグラフが表示されます</div>'; return; }
+
+  const width=900, height=260, padL=54, padR=16, padT=16, padB=30;
+  const allVals = groups.flatMap(g=>g.data.filter(v=>v!==null&&v!==undefined));
+  const maxV = Math.max(...allVals, 1);
+  const plotW = width-padL-padR, plotH = height-padT-padB;
+  const catW = plotW/categoryLabels.length;
+  const barW = (catW*0.7)/groups.length;
+  const yv = v => padT + plotH - (v/maxV)*plotH;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:260px;" preserveAspectRatio="none">`;
+  for(let g=0; g<=4; g++){
+    const gy = padT + plotH*g/4;
+    svg += `<line x1="${padL}" y1="${gy}" x2="${width-padR}" y2="${gy}" stroke="#2a3441" stroke-width="1"/>`;
+    svg += `<text x="${padL-8}" y="${gy+4}" font-size="10" fill="#8b93a1" text-anchor="end">${(maxV-(maxV*g/4)).toFixed(0)}</text>`;
+  }
+  categoryLabels.forEach((_, ci) => {
+    groups.forEach((grp, gi) => {
+      const v = grp.data[ci];
+      if(v===null||v===undefined) return;
+      const gx = padL + catW*ci + catW/2 - (groups.length*barW)/2 + gi*barW;
+      const by = yv(v);
+      svg += `<rect x="${gx.toFixed(1)}" y="${by.toFixed(1)}" width="${(barW*0.85).toFixed(1)}" height="${(padT+plotH-by).toFixed(1)}" fill="${grp.color}"/>`;
+    });
+  });
+  categoryLabels.forEach((l, ci) => {
+    const cx = padL + catW*ci + catW/2;
+    svg += `<text x="${cx.toFixed(1)}" y="${height-8}" font-size="10" fill="#8b93a1" text-anchor="middle">${svgEscapeText(l)}</text>`;
+  });
+  svg += '</svg>';
+
+  const legend = '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:#e8e3d5;">' +
+    groups.map(g=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:${g.color};display:inline-block;border-radius:2px;"></span>${svgEscapeText(g.label)}</span>`).join('') +
+    '</div>';
+  el.innerHTML = svg + legend;
+}
+
+/* ================= wire charts to data ================= */
+function renderCharts(){
+  const recs = records();
+  const labels = recs.map(r => r.year);
+
+  renderLineChart('cccChart', labels, [{label:'CCC（日）', color:'#c9a227', data: recs.map(r=>computed(r).ccc)}], {area:true, decimals:0});
+  renderCCCInsight();
+
+  renderLineChart('marginChart', labels, [
+    {label:'原価率', color:'#b8433a', data: recs.map(r=>computed(r).cogsRatio)},
+    {label:'販管費率', color:'#8b93a1', data: recs.map(r=>computed(r).sgaRatio)},
+    {label:'営業利益率', color:'#5c8a5c', data: recs.map(r=>computed(r).opMargin)},
+  ], {decimals:1});
+  renderMarginInsight();
+
+  renderBarLineChart('salesChart', labels,
+    [
+      {label:'売上高', color:'rgba(201,162,39,.75)', data: recs.map(r=>n(r.sales))},
+      {label:'売上原価', color:'rgba(139,147,161,.65)', data: recs.map(r=>n(r.cogs))},
+    ],
+    [{label:'営業利益', color:'#5c8a5c', data: recs.map(r=>n(r.opIncome))}]
+  );
+
+  renderLineChart('balanceChart', labels, [
+    {label:'商品(棚卸)', color:'#c9a227', data: recs.map(r=>n(r.inventory))},
+    {label:'売掛金', color:'#5c8a5c', data: recs.map(r=>n(r.receivables))},
+    {label:'買掛金', color:'#b8433a', data: recs.map(r=>n(r.payables))},
+  ], {area:true, decimals:0});
+}
+
+function renderQuarterChart(){
+  const qs = quarters();
+  const years = [...new Set(qs.map(q => q.year))];
+  const palette = ['#c9a227','#5c8a5c','#8b93a1','#b8433a','#6b8fc9','#a06bc9'];
+  const groups = years.map((y, i) => ({
+    label: y, color: palette[i % palette.length],
+    data: QUARTER_OPTIONS.map(qtr => { const rec = qs.find(q => q.year === y && q.quarter === qtr); return rec ? n(rec.inventory) : null; })
+  }));
+  renderGroupedBarChart('quarterChart', QUARTER_OPTIONS, groups);
+}
+
+/* ================= GAS spreadsheet sync ================= */
+function gasUrl(){ return document.getElementById('gasUrlInput').value.trim(); }
+function setGasStatus(msg){ document.getElementById('gasStatus').textContent = msg; }
+function updateGasCompanyLabel(){ document.getElementById('gasCompanyLabel').textContent = currentCompany; }
+
+async function gasLoad(){
+  const url = gasUrl();
+  if(!url){ alert('スプレッドシートのURLを入力してください。'); return; }
+  setGasStatus('読み込み中…');
+  const cbName = 'gasCallback_' + Date.now();
+  const timeout = setTimeout(() => {
+    if(window[cbName]){ setGasStatus('読み込みがタイムアウトしました。URLとデプロイ設定を確認してください。'); delete window[cbName]; }
+  }, 10000);
+  window[cbName] = function(data){
+    clearTimeout(timeout);
+    let rIdx=1, qIdx=1;
+    const newRecords = (data.records||[]).map(r => ({
+      id:'r'+(rIdx++), year:r.year||'', sales:n(r.sales), cogs:n(r.cogs), inventory:n(r.inventory),
+      receivables:n(r.receivables), payables:n(r.payables), opIncome:n(r.opIncome), sga:n(r.sga)
+    }));
+    const newQuarters = (data.quarters||[]).map(q => ({ id:'q'+(qIdx++), year:q.year||'', quarter:q.quarter||'期末', inventory:n(q.inventory) }));
+    if(newRecords.length) companies[currentCompany].records = newRecords;
+    if(newQuarters.length) companies[currentCompany].quarters = newQuarters;
+    render();
+    setGasStatus('読み込み完了（年次 '+newRecords.length+'件 / 四半期 '+newQuarters.length+'件）');
+    delete window[cbName];
+    script.remove();
+  };
+  const script = document.createElement('script');
+  script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+  script.onerror = () => { clearTimeout(timeout); setGasStatus('読み込みに失敗しました（通信エラー）。'); delete window[cbName]; };
+  document.body.appendChild(script);
+}
+
+function gasSave(){
+  const url = gasUrl();
+  if(!url){ alert('スプレッドシートのURLを入力してください。'); return; }
+  setGasStatus('保存中…');
+  const payload = JSON.stringify({
+    records: records().map(r => ({year:r.year, sales:r.sales, cogs:r.cogs, inventory:r.inventory, receivables:r.receivables, payables:r.payables, opIncome:r.opIncome, sga:r.sga})),
+    quarters: quarters().map(q => ({year:q.year, quarter:q.quarter, inventory:q.inventory}))
+  });
+  const cbName = 'gasSaveCb_' + Date.now();
+  const timeout = setTimeout(() => {
+    if(window[cbName]){ setGasStatus('保存がタイムアウトしました。スプレッドシート側を確認してください。'); delete window[cbName]; }
+  }, 10000);
+  window[cbName] = function(data){
+    clearTimeout(timeout);
+    setGasStatus(data && data.status==='ok' ? '保存しました。' : '保存に失敗しました（レスポンス異常）。');
+    delete window[cbName];
+    script.remove();
+  };
+  const script = document.createElement('script');
+  script.src = url + '?save=' + encodeURIComponent(payload) + '&callback=' + cbName;
+  script.onerror = () => { clearTimeout(timeout); setGasStatus('保存に失敗しました（通信エラー）。'); delete window[cbName]; };
+  document.body.appendChild(script);
+}
+
+document.getElementById('gasLoadBtn').addEventListener('click', gasLoad);
+document.getElementById('gasSaveBtn').addEventListener('click', gasSave);
+
+/* ================= CSV export / import ================= */
+function csvEscape(v){
+  const s = (v===null||v===undefined) ? '' : String(v);
+  return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function buildCSV(){
+  const header = ['type','year','quarter','sales','cogs','inventory','receivables','payables','opIncome','sga'];
+  const rows = [header.join(',')];
+  records().forEach(r => rows.push(['annual', r.year, '', r.sales, r.cogs, r.inventory, r.receivables, r.payables, r.opIncome, r.sga].map(csvEscape).join(',')));
+  quarters().forEach(q => rows.push(['quarterly', q.year, q.quarter, '', '', q.inventory, '', '', '', ''].map(csvEscape).join(',')));
+  return rows.join('\n');
+}
+function downloadCSV(){
+  const csv = buildCSV();
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = currentCompany + '_決算書分析.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function parseCSVLine(line){
+  const out=[]; let cur=''; let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(inQ){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else inQ=false; } else cur+=ch; }
+    else{ if(ch==='"') inQ=true; else if(ch===','){out.push(cur);cur='';} else cur+=ch; }
+  }
+  out.push(cur);
+  return out;
+}
+function importCSV(text){
+  const lines = text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l => l.trim()!=='');
+  if(lines.length<2){ alert('CSVの内容が読み取れませんでした。'); return; }
+  const newRecords=[], newQuarters=[]; let rIdx=1, qIdx=1;
+  for(let i=1;i<lines.length;i++){
+    const cols = parseCSVLine(lines[i]);
+    const [type, year, quarter, sales, cogs, inventory, receivables, payables, opIncome, sga] = cols;
+    if(type==='annual') newRecords.push({id:'r'+(rIdx++), year:year||'', sales:n(sales), cogs:n(cogs), inventory:n(inventory), receivables:n(receivables), payables:n(payables), opIncome:n(opIncome), sga:n(sga)});
+    else if(type==='quarterly') newQuarters.push({id:'q'+(qIdx++), year:year||'', quarter:quarter||'期末', inventory:n(inventory)});
+  }
+  if(newRecords.length===0 && newQuarters.length===0){ alert('データが見つかりませんでした。CSVの形式を確認してください。'); return; }
+  if(newRecords.length) companies[currentCompany].records = newRecords;
+  if(newQuarters.length) companies[currentCompany].quarters = newQuarters;
+  render();
+}
+document.getElementById('exportBtn').addEventListener('click', downloadCSV);
+document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => importCSV(reader.result);
+  reader.readAsText(file, 'utf-8');
+  e.target.value = '';
+});
+
+document.getElementById('addRowBtn').addEventListener('click', () => {
+  records().push({id:'r'+Date.now(), year:'新年度', sales:null, cogs:null, inventory:null, receivables:null, payables:null, opIncome:null, sga:null});
+  render();
+});
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if(!confirm(currentCompany+'のデータを消去します。よろしいですか？')) return;
+  if(currentCompany === 'しまむら'){
+    companies[currentCompany] = { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS) };
+  }else{
+    companies[currentCompany] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null}], quarters: [] };
+  }
+  render();
+});
+
+/* ================= init ================= */
+renderCompanySelect();
+updateGasCompanyLabel();
+render();
+</script>
+</body>
+</html>
