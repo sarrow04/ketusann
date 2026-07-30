@@ -253,9 +253,9 @@ const SHIMAMURA_QUARTERS = [
 ];
 
 let companies = {
-  'しまむら': { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS) }
+  '株式会社しまむら': { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS) }
 };
-let currentCompany = 'しまむら';
+let currentCompany = '株式会社しまむら';
 
 function records(){ return companies[currentCompany].records; }
 function quarters(){ return companies[currentCompany].quarters; }
@@ -724,7 +724,7 @@ async function gasLoad(){
     script.remove();
   };
   const script = document.createElement('script');
-  script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+  script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName + '&company=' + encodeURIComponent(currentCompany);
   script.onerror = () => { clearTimeout(timeout); setGasStatus('読み込みに失敗しました（通信エラー）。'); delete window[cbName]; };
   document.body.appendChild(script);
 }
@@ -748,7 +748,7 @@ function gasSave(){
     script.remove();
   };
   const script = document.createElement('script');
-  script.src = url + '?save=' + encodeURIComponent(payload) + '&callback=' + cbName;
+  script.src = url + '?save=' + encodeURIComponent(payload) + '&callback=' + cbName + '&company=' + encodeURIComponent(currentCompany);
   script.onerror = () => { clearTimeout(timeout); setGasStatus('保存に失敗しました（通信エラー）。'); delete window[cbName]; };
   document.body.appendChild(script);
 }
@@ -819,7 +819,7 @@ document.getElementById('addRowBtn').addEventListener('click', () => {
 });
 document.getElementById('resetBtn').addEventListener('click', () => {
   if(!confirm(currentCompany+'のデータを消去します。よろしいですか？')) return;
-  if(currentCompany === 'しまむら'){
+  if(currentCompany === '株式会社しまむら'){
     companies[currentCompany] = { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS) };
   }else{
     companies[currentCompany] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null}], quarters: [] };
