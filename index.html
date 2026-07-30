@@ -93,12 +93,38 @@
   .insight{margin-top:14px; padding:10px 14px; background:#0f151d; border-left:3px solid var(--gold); border-radius:3px; font-size:12.5px; line-height:1.7; color:var(--text);}
   .insight b{color:var(--gold);}
   .empty-note{color:var(--text-faint); font-size:12.5px; padding:20px 0; text-align:center;}
+  .glossary details{border-bottom:1px solid var(--line); padding:10px 0;}
+  .glossary details:last-child{border-bottom:none;}
+  .glossary summary{font-family:"Shippori Mincho",serif; font-weight:700; color:var(--gold); cursor:pointer; font-size:13.5px; list-style:none;}
+  .glossary summary::-webkit-details-marker{display:none;}
+  .glossary summary::before{content:"▸ "; color:var(--gold-soft);}
+  .glossary details[open] summary::before{content:"▾ ";}
+  .glossary p{font-size:12.5px; color:var(--text); line-height:1.8; margin:8px 0 2px 14px;}
+  .anomaly-value{font-family:"JetBrains Mono",monospace; font-size:32px; font-weight:700;}
+  .anomaly-label{font-size:12px; color:var(--text-dim); margin-top:4px;}
 
   .footnote{font-size:11.5px; color:var(--text-faint); line-height:1.7; margin-top:6px; border-top:1px dashed var(--line); padding-top:12px;}
   .unit-note{font-size:11.5px; color:var(--text-faint);}
   .io-row{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:16px 0 8px;}
   input[type=file]{display:none;}
   ::selection{background:var(--gold); color:#1a1206;}
+
+  @media print{
+    body{background:#fff !important; color:#111 !important; padding-bottom:0;}
+    .main-tabs, .io-row, #addCompanyBtn, #printBtn, #resetBtn{display:none !important;}
+    #tab-input{display:none !important;}
+    #tab-dashboard{display:block !important;}
+    .chart-card, .stamp{background:#fff !important; border:1px solid #ccc !important; color:#111 !important; break-inside:avoid;}
+    .stamp.warn{border-left-color:#b8433a !important;}
+    .stamp.good{border-left-color:#5c8a5c !important;}
+    .stamp .value, .anomaly-value{color:#111 !important;}
+    .insight{background:#f7f5ef !important; color:#111 !important; border-left-color:#9c8043 !important;}
+    .footnote{color:#555 !important;}
+    .section-label{color:#9c8043 !important;}
+    svg text{fill:#333 !important;}
+    .tab-badge{box-shadow:none !important;}
+    .glossary p{color:#333 !important;}
+  }
 </style>
 </head>
 <body>
@@ -113,8 +139,14 @@
 <main>
   <div class="meta-bar">
     <select id="companySelect"></select>
+    <select id="unitSelect" style="background:#0f151d; border:1px solid var(--line); color:var(--text); font-size:12.5px; padding:6px 10px; border-radius:4px;">
+      <option value="百万円">単位：百万円</option>
+      <option value="千円">単位：千円</option>
+      <option value="円">単位：円</option>
+    </select>
     <button class="pill-btn" id="addCompanyBtn">＋ 企業を追加</button>
-    <span class="unit-note" style="margin-left:auto;">単位：百万円 / 連結ベース</span>
+    <button class="pill-btn" id="printBtn">PDFとして保存（印刷）</button>
+    <span class="unit-note" style="margin-left:auto;">連結ベース</span>
   </div>
 
   <div class="main-tabs">
@@ -127,13 +159,13 @@
 
     <div class="section-label first">売上高・利益の推移</div>
     <div class="chart-card">
-      <h3>売上高・売上原価（棒）／営業利益（線）／単位：百万円</h3>
+      <h3>売上高・売上原価（棒）／営業利益（線）／単位：<span class="unit-tag">百万円</span></h3>
       <div class="chart-box" id="salesChart"></div>
     </div>
 
     <div class="section-label">在庫・売掛金・買掛金の推移</div>
     <div class="chart-card">
-      <h3>期末残高（百万円）</h3>
+      <h3>期末残高（<span class="unit-tag">百万円</span>）</h3>
       <div class="chart-box" id="balanceChart"></div>
     </div>
 
@@ -142,6 +174,26 @@
       <h3>キャッシュ・コンバージョン・サイクル（日）</h3>
       <div class="chart-box" id="cccChart"></div>
       <div class="insight" id="cccInsight"></div>
+    </div>
+
+    <div class="section-label">CCC異常検知</div>
+    <div class="chart-card">
+      <h3>過去実績からの乖離度（zスコア）</h3>
+      <div id="anomalyBox"></div>
+      <div class="insight" id="anomalyInsight"></div>
+      <div class="footnote">
+        <b>zスコアとは：</b>最新のCCCが、それ以前の年度の平均からどれだけ離れているかを「標準偏差（バラつきの単位）」の何個分か」で表した数値。0に近いほど「いつも通り」、絶対値が大きいほど「過去のパターンから外れた動き」を意味する。目安：|z|&lt;1で通常範囲、1〜2でやや異常、2以上で明確な外れ値。年度数が少ないと精度は粗くなる。
+      </div>
+    </div>
+
+    <div class="section-label">運転資金インパクト</div>
+    <div class="chart-card">
+      <h3>キャッシュ・コンバージョン・サイクルが縛っている金額</h3>
+      <div id="cashImpactBox"></div>
+      <div class="insight" id="cashImpactInsight"></div>
+      <div class="footnote">
+        <b>運転資金（キャッシュ・コンバージョン・サイクルが縛る現金）とは：</b>商品(棚卸資産)＋売掛金－買掛金で計算した金額。仕入代金を先に払い、販売代金を後で回収するまでの間、会社が立て替えている現金の規模を表す。CCCの日数が長い／短いを「日数」ではなく「金額」で実感するための指標。
+      </div>
     </div>
 
     <div class="section-label">利益率の推移</div>
@@ -153,9 +205,33 @@
 
     <div class="section-label">四半期の季節パターン</div>
     <div class="chart-card">
-      <h3>四半期末 商品残高（百万円）— 年またぎ比較</h3>
+      <h3>四半期末 商品残高（<span class="unit-tag">百万円</span>）— 年またぎ比較</h3>
       <div class="chart-box" id="quarterChart"></div>
       <div class="insight" id="quarterInsight"></div>
+    </div>
+
+    <div class="section-label">用語集</div>
+    <div class="chart-card glossary">
+      <details>
+        <summary>CCC（キャッシュ・コンバージョン・サイクル）</summary>
+        <p>仕入で現金を払ってから、販売して現金が戻ってくるまでの日数。CCC = 在庫回転日数 + 売掛金回転日数 − 買掛金回転日数。短いほど資金繰りが効率的。</p>
+      </details>
+      <details>
+        <summary>在庫回転日数・売掛金回転日数・買掛金回転日数</summary>
+        <p>それぞれ「商品が売れるまで」「売った代金を回収するまで」「仕入代金を支払うまで」に何日かかっているかを表す。商品(棚卸資産)や売掛金・買掛金の残高を、売上高または売上原価で割って365日を掛けて計算する。</p>
+      </details>
+      <details>
+        <summary>原価率・販管費率・営業利益率</summary>
+        <p>いずれも売上高に対する割合。原価率＝売上原価÷売上高、販管費率＝販管費÷売上高、営業利益率＝営業利益÷売上高。原価率が下がる、または販管費率が下がると、営業利益率は改善しやすい。</p>
+      </details>
+      <details>
+        <summary>zスコア（標準偏差からの乖離度）</summary>
+        <p>ある数値が、平均からどれだけ離れているかを「バラつきの単位（標準偏差）」で測ったもの。z = (今年の値 − 過去の平均) ÷ 過去の標準偏差。0に近いほど「いつも通り」、絶対値が大きいほど「珍しい動き」。</p>
+      </details>
+      <details>
+        <summary>運転資金（ワーキングキャピタル）</summary>
+        <p>事業を回すために立て替えている現金の規模。商品(棚卸資産)＋売掛金－買掛金で計算する。この金額が大きいほど、販売・回収サイクルの間に多くの現金を寝かせていることになる。</p>
+      </details>
     </div>
   </div>
 
@@ -253,12 +329,23 @@ const SHIMAMURA_QUARTERS = [
 ];
 
 let companies = {
-  '株式会社しまむら': { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS) }
+  '株式会社しまむら': { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS), unit: '百万円' }
 };
 let currentCompany = '株式会社しまむら';
 
 function records(){ return companies[currentCompany].records; }
 function quarters(){ return companies[currentCompany].quarters; }
+function getUnit(){ return (companies[currentCompany] && companies[currentCompany].unit) || '百万円'; }
+function applyUnitLabels(){
+  document.querySelectorAll('.unit-tag').forEach(el => el.textContent = getUnit());
+  document.getElementById('unitSelect').value = getUnit();
+}
+document.getElementById('unitSelect').addEventListener('change', (e) => {
+  companies[currentCompany].unit = e.target.value;
+  applyUnitLabels();
+  renderCashImpact();
+});
+document.getElementById('printBtn').addEventListener('click', () => window.print());
 
 const FIELDS = ['sales','cogs','inventory','receivables','payables','opIncome','sga'];
 
@@ -288,6 +375,7 @@ function renderCompanySelect(){
 document.getElementById('companySelect').addEventListener('change', (e) => {
   currentCompany = e.target.value;
   updateGasCompanyLabel();
+  applyUnitLabels();
   render();
 });
 document.getElementById('addCompanyBtn').addEventListener('click', () => {
@@ -295,10 +383,11 @@ document.getElementById('addCompanyBtn').addEventListener('click', () => {
   if(!name || !name.trim()) return;
   const clean = name.trim();
   if(companies[clean]){ alert('その企業はすでにあります。'); currentCompany = clean; renderCompanySelect(); render(); return; }
-  companies[clean] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null}], quarters: [] };
+  companies[clean] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null}], quarters: [], unit:'百万円' };
   currentCompany = clean;
   renderCompanySelect();
   updateGasCompanyLabel();
+  applyUnitLabels();
   render();
 });
 
@@ -655,12 +744,92 @@ function renderGroupedBarChart(containerId, categoryLabels, groups){
 }
 
 /* ================= wire charts to data ================= */
+function renderAnomalySection(){
+  const box = document.getElementById('anomalyBox');
+  const insight = document.getElementById('anomalyInsight');
+  const recs = records();
+  const cccs = recs.map(r => computed(r).ccc);
+  const latest = cccs[cccs.length-1];
+  const baseline = cccs.slice(0, -1).filter(v => v !== null);
+
+  if(latest===null || baseline.length < 2){
+    box.innerHTML = '<div class="empty-note">年度が3つ以上（うちCCCが計算できる年度が3つ以上）ないと判定できません</div>';
+    insight.textContent = '';
+    return;
+  }
+  const mean = baseline.reduce((s,v)=>s+v,0) / baseline.length;
+  const variance = baseline.reduce((s,v)=>s+(v-mean)**2,0) / (baseline.length-1);
+  const std = Math.sqrt(variance);
+  const z = std > 0 ? (latest-mean)/std : 0;
+  const absZ = Math.abs(z);
+  let label, cls;
+  if(absZ < 1){ label='通常範囲'; cls='good'; }
+  else if(absZ < 2){ label='やや異常'; cls='warn'; }
+  else { label='明確な外れ値'; cls='warn'; }
+
+  box.innerHTML = `
+    <div class="stamp ${cls}" style="max-width:260px;">
+      <div class="label">最新年度のzスコア</div>
+      <div class="anomaly-value num">${z>=0?'+':''}${z.toFixed(2)}</div>
+      <div class="anomaly-label">${label}（過去平均 ${mean.toFixed(1)}日 / 標準偏差 ${std.toFixed(1)}日）</div>
+    </div>
+  `;
+  insight.innerHTML = `最新のCCC（${fmt(latest)}日）は、それ以前の年度の平均から標準偏差${absZ.toFixed(2)}個分離れている。<b>${label}</b>と判定。`;
+}
+
+function renderCashImpact(){
+  const box = document.getElementById('cashImpactBox');
+  const insight = document.getElementById('cashImpactInsight');
+  const recs = records();
+  if(recs.length===0){ box.innerHTML=''; insight.textContent=''; return; }
+  const last = recs[recs.length-1];
+  const prev = recs.length>1 ? recs[recs.length-2] : null;
+
+  const inv=n(last.inventory), rec_=n(last.receivables), pay=n(last.payables), cogs=n(last.cogs);
+  if(inv===null || rec_===null || pay===null){
+    box.innerHTML = '<div class="empty-note">商品・売掛金・買掛金がすべて入力されると計算されます</div>';
+    insight.textContent = '';
+    return;
+  }
+  const workingCapital = inv + rec_ - pay;
+  const dailyCogs = cogs ? cogs/365 : null;
+
+  let prevWC = null;
+  if(prev){
+    const pInv=n(prev.inventory), pRec=n(prev.receivables), pPay=n(prev.payables);
+    if(pInv!==null && pRec!==null && pPay!==null) prevWC = pInv+pRec-pPay;
+  }
+  const delta = prevWC!==null ? workingCapital-prevWC : null;
+
+  const unit = getUnit();
+  box.innerHTML = `
+    <div class="stamps" style="margin-bottom:0;">
+      <div class="stamp">
+        <div class="label">運転資金（在庫＋売掛－買掛）</div>
+        <div class="value num">${workingCapital.toLocaleString()}${unit}</div>
+        <div class="delta num">${delta===null?'前期データなし':(delta>=0?'+':'')+delta.toLocaleString()+unit+' 前期比'}</div>
+      </div>
+      <div class="stamp">
+        <div class="label">CCC 1日あたりのキャッシュ換算</div>
+        <div class="value num">${dailyCogs===null?'—':Math.round(dailyCogs).toLocaleString()+unit+'/日'}</div>
+        <div class="delta num">売上原価ベースの概算（売上原価 ÷ 365）</div>
+      </div>
+    </div>
+  `;
+  let text = `現在、約<b>${workingCapital.toLocaleString()}${unit}</b>の現金が在庫・売掛金・買掛金の差額として事業サイクルの中に固定されている。`;
+  if(delta!==null) text += ` 前期比 ${delta>=0?'+':''}${delta.toLocaleString()}${unit}${delta>=0?'増加':'減少'}。`;
+  if(dailyCogs!==null) text += ` CCCが1日変わるごとに、おおよそ${Math.round(dailyCogs).toLocaleString()}${unit}分のキャッシュインパクトに相当する。`;
+  insight.innerHTML = text;
+}
+
 function renderCharts(){
   const recs = records();
   const labels = recs.map(r => r.year);
 
   renderLineChart('cccChart', labels, [{label:'CCC（日）', color:'#c9a227', data: recs.map(r=>computed(r).ccc)}], {area:true, decimals:0});
   renderCCCInsight();
+  renderAnomalySection();
+  renderCashImpact();
 
   renderLineChart('marginChart', labels, [
     {label:'原価率', color:'#b8433a', data: recs.map(r=>computed(r).cogsRatio)},
@@ -830,16 +999,18 @@ document.getElementById('addRowBtn').addEventListener('click', () => {
 document.getElementById('resetBtn').addEventListener('click', () => {
   if(!confirm(currentCompany+'のデータを消去します。よろしいですか？')) return;
   if(currentCompany === '株式会社しまむら'){
-    companies[currentCompany] = { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS) };
+    companies[currentCompany] = { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS), unit: '百万円' };
   }else{
-    companies[currentCompany] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null}], quarters: [] };
+    companies[currentCompany] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null}], quarters: [], unit: companies[currentCompany].unit || '百万円' };
   }
+  applyUnitLabels();
   render();
 });
 
 /* ================= init ================= */
 renderCompanySelect();
 updateGasCompanyLabel();
+applyUnitLabels();
 render();
 </script>
 </body>
