@@ -737,20 +737,30 @@ function gasSave(){
     records: records().map(r => ({year:r.year, sales:r.sales, cogs:r.cogs, inventory:r.inventory, receivables:r.receivables, payables:r.payables, opIncome:r.opIncome, sga:r.sga})),
     quarters: quarters().map(q => ({year:q.year, quarter:q.quarter, inventory:q.inventory}))
   });
-  const cbName = 'gasSaveCb_' + Date.now();
-  const timeout = setTimeout(() => {
-    if(window[cbName]){ setGasStatus('保存がタイムアウトしました。スプレッドシート側を確認してください。'); delete window[cbName]; }
-  }, 10000);
-  window[cbName] = function(data){
-    clearTimeout(timeout);
-    setGasStatus(data && data.status==='ok' ? '保存しました。' : '保存に失敗しました（レスポンス異常）。');
-    delete window[cbName];
-    script.remove();
+
+  let iframe = document.getElementById('gasSaveFrame');
+  if(!iframe){
+    iframe = document.createElement('iframe');
+    iframe.id = 'gasSaveFrame';
+    iframe.name = 'gasSaveFrame';
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+  }
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = url;
+  form.target = 'gasSaveFrame';
+  const addField = (name, value) => {
+    const input = document.createElement('input');
+    input.type = 'hidden'; input.name = name; input.value = value;
+    form.appendChild(input);
   };
-  const script = document.createElement('script');
-  script.src = url + '?save=' + encodeURIComponent(payload) + '&callback=' + cbName + '&company=' + encodeURIComponent(currentCompany);
-  script.onerror = () => { clearTimeout(timeout); setGasStatus('保存に失敗しました（通信エラー）。'); delete window[cbName]; };
-  document.body.appendChild(script);
+  addField('payload', payload);
+  addField('company', currentCompany);
+  document.body.appendChild(form);
+  form.submit();
+  form.remove();
+  setTimeout(() => setGasStatus('保存リクエストを送信しました。スプレッドシート側を開いて反映を確認してください。'), 900);
 }
 
 document.getElementById('gasLoadBtn').addEventListener('click', gasLoad);
