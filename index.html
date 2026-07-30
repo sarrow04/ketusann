@@ -223,6 +223,15 @@
       <div class="insight" id="quarterInsight"></div>
     </div>
 
+    <div class="section-label">総合力レーダーチャート</div>
+    <div class="chart-card">
+      <h3>収益性・成長性・安全性・効率性・株主還元（最新年度 vs 前年度）</h3>
+      <div class="chart-box" id="radarChart"></div>
+      <div class="footnote">
+        5軸とも0〜100点に正規化した目安のスコア（収益性=営業利益率、成長性=売上高前期比、安全性=自己資本比率、効率性=CCCの短さ、株主還元=配当性向）。業種平均との比較ではなく、あくまで一般的な目安に基づく簡易スコアです。
+      </div>
+    </div>
+
     <div class="section-label">用語集</div>
     <div class="chart-card glossary">
       <details>
@@ -286,7 +295,7 @@
             <th>営業利益</th><th>販管費</th><th>自己資本</th><th>総資産</th><th>配当金</th><th>当期純利益</th>
             <th>原価率%</th><th>販管費率%</th><th>営業利益率%</th><th>自己資本比率%</th><th>配当性向%</th>
             <th>在庫日数</th><th>売掛日数</th><th>買掛日数</th><th>CCC</th>
-            <th>メモ（その期の出来事）</th>
+            <th>メモ（この企業固有の出来事）</th>
           </tr>
         </thead>
         <tbody id="ledgerBody"></tbody>
@@ -294,6 +303,20 @@
     </div>
     <div class="footnote">
       CCC = 在庫回転日数 + 売掛金回転日数 − 買掛金回転日数（365日ベース）。空欄がある年度は、それに依存する指標のみ計算されません。
+    </div>
+
+    <div class="section-label">共通の出来事（全企業共通）</div>
+    <div class="meta-bar" style="margin:0 0 10px;">
+      <button class="pill-btn" id="addEventBtn">＋ 出来事を追加</button>
+    </div>
+    <div class="ledger-wrap">
+      <table>
+        <thead><tr><th>年度</th><th>出来事（コロナ・戦争・地震など）</th><th></th></tr></thead>
+        <tbody id="eventBody"></tbody>
+      </table>
+    </div>
+    <div class="footnote">
+      ここに入れた出来事は、どの企業を選んでも同じ年度に自動で表示されます（コロナ・戦争・地震など企業共通のマクロイベント用）。企業固有の出来事は、上の「メモ」欄に入れてください。
     </div>
 
     <div class="section-label">四半期ウォッチ — 商品(棚卸資産)</div>
@@ -350,6 +373,14 @@ let companies = {
   '株式会社しまむら': { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS), unit: '百万円' }
 };
 let currentCompany = '株式会社しまむら';
+
+const DEFAULT_GLOBAL_EVENTS = [
+  {id:'e1', year:'2022年2月期', event:'新型コロナ影響（行動制限・まん延防止等重点措置）'},
+  {id:'e2', year:'2023年2月期', event:'ロシア・ウクライナ戦争長期化、原材料高騰・円安'},
+  {id:'e3', year:'2024年2月期', event:'コロナ5類移行、経済活動正常化'},
+  {id:'e4', year:'2026年2月期', event:'記録的猛暑、金利のある世界への移行'},
+];
+let globalEvents = structuredClone(DEFAULT_GLOBAL_EVENTS);
 
 function records(){ return companies[currentCompany].records; }
 function quarters(){ return companies[currentCompany].quarters; }
@@ -527,18 +558,62 @@ document.getElementById('addQuarterBtn').addEventListener('click', () => {
 function renderMemoList(){
   const list = document.getElementById('memoList');
   const recs = records();
-  const withMemo = recs.filter(r => r.memo && r.memo.trim() !== '');
-  if(withMemo.length === 0){
-    list.innerHTML = '<div class="empty-note">「入力」タブの年度表にある「メモ」欄に、その期に起きた出来事（コロナ・地震・戦争・為替急変など）を書き込むと、ここに一覧表示されます。</div>';
+  const rows = recs.map(r => {
+    const globalEv = globalEvents.find(ev => ev.year === r.year && ev.event && ev.event.trim() !== '');
+    const hasCompanyMemo = r.memo && r.memo.trim() !== '';
+    if(!globalEv && !hasCompanyMemo) return null;
+    const parts = [];
+    if(globalEv) parts.push(`<span style="color:var(--text-dim);">[共通] ${String(globalEv.event).replace(/</g,'&lt;')}</span>`);
+    if(hasCompanyMemo) parts.push(`<span>${String(r.memo).replace(/</g,'&lt;')}</span>`);
+    return `
+      <div style="padding:8px 0; border-bottom:1px solid #1e2734;">
+        <span style="font-family:'Shippori Mincho',serif; color:var(--gold); font-weight:700;">${r.year}</span>
+        <span style="margin-left:8px; font-size:13px; display:block; margin-top:2px;">${parts.join('　/　')}</span>
+      </div>
+    `;
+  }).filter(x => x !== null);
+
+  if(rows.length === 0){
+    list.innerHTML = '<div class="empty-note">「入力」タブの「共通の出来事」（コロナ・戦争・地震など全企業共通）や、年度表の「メモ」欄（この企業固有の出来事）に書き込むと、ここに一覧表示されます。</div>';
     return;
   }
-  list.innerHTML = withMemo.map(r => `
-    <div style="padding:8px 0; border-bottom:1px solid #1e2734;">
-      <span style="font-family:'Shippori Mincho',serif; color:var(--gold); font-weight:700;">${r.year}</span>
-      <span style="color:var(--text); margin-left:8px; font-size:13px;">${String(r.memo).replace(/</g,'&lt;')}</span>
-    </div>
-  `).join('');
+  list.innerHTML = rows.join('');
 }
+
+function renderEvents(){
+  const body = document.getElementById('eventBody');
+  body.innerHTML = '';
+  globalEvents.forEach(ev => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input class="year-input" data-efield="year" data-eid="${ev.id}" value="${ev.year}"></td>
+      <td><input class="memo-input" data-efield="event" data-eid="${ev.id}" value="${(ev.event||'').replace(/"/g,'&quot;')}"></td>
+      <td><button class="del-btn" data-edel="${ev.id}" title="削除">✕</button></td>
+    `;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('[data-efield]').forEach(inp => inp.addEventListener('change', onEventChange));
+  body.querySelectorAll('[data-edel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      globalEvents = globalEvents.filter(ev => ev.id !== btn.dataset.edel);
+      renderEvents(); renderMemoList();
+    });
+  });
+}
+
+function onEventChange(e){
+  const id = e.target.dataset.eid, field = e.target.dataset.efield;
+  const ev = globalEvents.find(x => x.id === id);
+  if(!ev) return;
+  ev[field] = e.target.value;
+  renderMemoList();
+}
+
+document.getElementById('addEventBtn').addEventListener('click', () => {
+  const id = 'e' + Date.now();
+  globalEvents.push({id, year:'新年度', event:''});
+  renderEvents();
+});
 
 function renderStamps(){
   const wrap = document.getElementById('stamps');
@@ -745,6 +820,62 @@ function renderBarLineChart(containerId, labels, barSeries, lineSeries, opts={})
   el.innerHTML = svg + legend;
 }
 
+function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+function radarScores(rec, prevRec){
+  const c = computed(rec);
+  const sales = n(rec.sales), prevSales = prevRec ? n(prevRec.sales) : null;
+  const growth = (sales!==null && prevSales) ? (sales-prevSales)/prevSales*100 : null;
+
+  return {
+    '収益性': c.opMargin!==null ? clamp(c.opMargin/15*100, 0, 100) : null,
+    '成長性': growth!==null ? clamp((growth+10)/30*100, 0, 100) : null,
+    '安全性': c.equityRatio!==null ? clamp(c.equityRatio, 0, 100) : null,
+    '効率性': c.ccc!==null ? clamp(100 - (clamp(c.ccc,0,90)/90*100), 0, 100) : null,
+    '株主還元': c.payoutRatio!==null ? clamp(c.payoutRatio/50*100, 0, 100) : null,
+  };
+}
+
+function renderRadarChart(containerId, seriesList){
+  const el = document.getElementById(containerId);
+  const axes = Object.keys(seriesList[0].scores);
+  const hasAnyData = seriesList.some(s => axes.some(a => s.scores[a] !== null));
+  if(!hasAnyData){ el.innerHTML = '<div class="empty-note">営業利益率・自己資本比率・CCC・配当性向などが入力されるとここに表示されます</div>'; return; }
+
+  const size = 320, cx = size/2, cy = size/2, R = 110;
+  const n_ = axes.length;
+  const angle = i => -Math.PI/2 + i*(2*Math.PI/n_);
+  const pt = (i, val) => [cx + R*(val/100)*Math.cos(angle(i)), cy + R*(val/100)*Math.sin(angle(i))];
+
+  let svg = `<svg viewBox="0 0 ${size} ${size}" style="width:100%;max-width:360px;height:auto;display:block;margin:0 auto;">`;
+  [25,50,75,100].forEach(ring => {
+    const ptsStr = axes.map((_,i) => pt(i,ring).join(',')).join(' ');
+    svg += `<polygon points="${ptsStr}" fill="none" stroke="#2a3441" stroke-width="1"/>`;
+  });
+  axes.forEach((axLabel, i) => {
+    const [x,y] = pt(i,100);
+    svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#2a3441" stroke-width="1"/>`;
+    const [lx,ly] = [cx + (R+22)*Math.cos(angle(i)), cy + (R+22)*Math.sin(angle(i))];
+    svg += `<text x="${lx}" y="${ly}" font-size="11" fill="#8b93a1" text-anchor="middle" dominant-baseline="middle">${svgEscapeText(axLabel)}</text>`;
+  });
+  seriesList.forEach(s => {
+    const vals = axes.map(a => s.scores[a] !== null ? s.scores[a] : 0);
+    const ptsStr = axes.map((_,i) => pt(i, vals[i]).join(',')).join(' ');
+    svg += `<polygon points="${ptsStr}" fill="${s.color}" fill-opacity="0.18" stroke="${s.color}" stroke-width="2.5"/>`;
+    axes.forEach((_,i) => {
+      if(s.scores[axes[i]] === null) return;
+      const [x,y] = pt(i, vals[i]);
+      svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="${s.color}"/>`;
+    });
+  });
+  svg += '</svg>';
+
+  const legend = '<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:8px;font-size:11px;color:#e8e3d5;">' +
+    seriesList.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:${s.color};display:inline-block;border-radius:2px;"></span>${svgEscapeText(s.label)}</span>`).join('') +
+    '</div>';
+  el.innerHTML = svg + legend;
+}
+
 function renderGroupedBarChart(containerId, categoryLabels, groups){
   const el = document.getElementById(containerId);
   const anyVal = groups.some(g=>g.data.some(v=>v!==null&&v!==undefined));
@@ -898,6 +1029,17 @@ function renderCharts(){
     {label:'売掛金', color:'#5c8a5c', data: recs.map(r=>n(r.receivables))},
     {label:'買掛金', color:'#b8433a', data: recs.map(r=>n(r.payables))},
   ], {area:true, decimals:0});
+
+  if(recs.length >= 1){
+    const last = recs[recs.length-1];
+    const prev = recs.length>1 ? recs[recs.length-2] : null;
+    const radarSeries = [{label: last.year, color:'#c9a227', scores: radarScores(last, prev)}];
+    if(prev){
+      const prevPrev = recs.length>2 ? recs[recs.length-3] : null;
+      radarSeries.push({label: prev.year, color:'#8b93a1', scores: radarScores(prev, prevPrev)});
+    }
+    renderRadarChart('radarChart', radarSeries);
+  }
 }
 
 function renderQuarterChart(){
@@ -992,6 +1134,7 @@ function buildCSV(){
   const rows = [header.join(',')];
   records().forEach(r => rows.push(['annual', r.year, '', r.sales, r.cogs, r.inventory, r.receivables, r.payables, r.opIncome, r.sga, r.equity, r.totalAssets, r.dividend, r.netIncome, r.memo||''].map(csvEscape).join(',')));
   quarters().forEach(q => rows.push(['quarterly', q.year, q.quarter, '', '', q.inventory, '', '', '', '', '', '', '', '', ''].map(csvEscape).join(',')));
+  globalEvents.forEach(ev => rows.push(['event', ev.year, '', '', '', '', '', '', '', '', '', '', '', '', ev.event||''].map(csvEscape).join(',')));
   return rows.join('\n');
 }
 function downloadCSV(){
@@ -1016,16 +1159,19 @@ function parseCSVLine(line){
 function importCSV(text){
   const lines = text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l => l.trim()!=='');
   if(lines.length<2){ alert('CSVの内容が読み取れませんでした。'); return; }
-  const newRecords=[], newQuarters=[]; let rIdx=1, qIdx=1;
+  const newRecords=[], newQuarters=[], newEvents=[]; let rIdx=1, qIdx=1, eIdx=1;
   for(let i=1;i<lines.length;i++){
     const cols = parseCSVLine(lines[i]);
     const [type, year, quarter, sales, cogs, inventory, receivables, payables, opIncome, sga, equity, totalAssets, dividend, netIncome, memo] = cols;
     if(type==='annual') newRecords.push({id:'r'+(rIdx++), year:year||'', sales:n(sales), cogs:n(cogs), inventory:n(inventory), receivables:n(receivables), payables:n(payables), opIncome:n(opIncome), sga:n(sga), equity:n(equity), totalAssets:n(totalAssets), dividend:n(dividend), netIncome:n(netIncome), memo:memo||''});
     else if(type==='quarterly') newQuarters.push({id:'q'+(qIdx++), year:year||'', quarter:quarter||'期末', inventory:n(inventory)});
+    else if(type==='event') newEvents.push({id:'e'+(eIdx++), year:year||'', event:memo||''});
   }
   if(newRecords.length===0 && newQuarters.length===0){ alert('データが見つかりませんでした。CSVの形式を確認してください。'); return; }
   if(newRecords.length) companies[currentCompany].records = newRecords;
   if(newQuarters.length) companies[currentCompany].quarters = newQuarters;
+  if(newEvents.length) globalEvents = newEvents;
+  renderEvents();
   render();
 }
 document.getElementById('exportBtn').addEventListener('click', downloadCSV);
@@ -1058,6 +1204,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 renderCompanySelect();
 updateGasCompanyLabel();
 applyUnitLabels();
+renderEvents();
 render();
 </script>
 </body>
