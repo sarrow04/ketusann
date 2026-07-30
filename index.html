@@ -277,21 +277,28 @@
 
   <div class="tab-panel" id="tab-input">
     <div class="io-row">
-      <input type="text" id="gasUrlInput" placeholder="GASウェブアプリURL" value="https://script.google.com/macros/s/AKfycbwYnTVU6qUwrsuPCYWwyPKvzJ6JtbScw_t-qbdQhnF_hw0JNDuRcbgVbHtjcOOQUT72/exec" style="flex:1; min-width:260px; background:#0f151d; border:1px solid var(--line); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:11.5px; padding:8px 10px; border-radius:4px;">
-      <button class="pill-btn primary" id="gasLoadBtn">スプレッドシートから読み込む</button>
-      <button class="pill-btn primary" id="gasSaveBtn">スプレッドシートに保存する</button>
+      <button class="pill-btn primary" id="gasSaveBtn">保存する</button>
     </div>
     <div class="footnote" id="gasStatus" style="border-top:none; padding-top:0;"></div>
-    <div class="footnote">
-      現在選択中の企業（<span id="gasCompanyLabel"></span>）のデータを、このURL先のスプレッドシートと同期します。保存は現在のデータでシートを上書き、読み込みはシートの内容でこの画面を上書きします。
-    </div>
 
-    <div class="io-row">
-      <button class="pill-btn" id="exportBtn">CSVをダウンロード（バックアップ用）</button>
-      <button class="pill-btn" id="importBtn">CSVを読み込む</button>
-      <input type="file" id="importFile" accept=".csv">
-      <button class="pill-btn" id="resetBtn">この企業をリセット</button>
-    </div>
+    <details class="chart-card" style="margin-bottom:20px;">
+      <summary style="font-family:'Shippori Mincho',serif; color:var(--gold); font-weight:700; cursor:pointer; font-size:13px;">詳細設定（GAS連携URL・CSV・リセット）</summary>
+      <div style="margin-top:14px;">
+        <div class="io-row" style="margin-top:0;">
+          <input type="text" id="gasUrlInput" placeholder="GASウェブアプリURL" value="https://script.google.com/macros/s/AKfycbwYnTVU6qUwrsuPCYWwyPKvzJ6JtbScw_t-qbdQhnF_hw0JNDuRcbgVbHtjcOOQUT72/exec" style="flex:1; min-width:260px; background:#0f151d; border:1px solid var(--line); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:11.5px; padding:8px 10px; border-radius:4px;">
+          <button class="pill-btn" id="gasLoadBtn">今すぐ読み込み直す</button>
+        </div>
+        <div class="footnote">
+          企業を切り替えると自動でこのURL先のスプレッドシートから読み込みます。「保存する」は現在の企業のデータでシートを上書きします。
+        </div>
+        <div class="io-row">
+          <button class="pill-btn" id="exportBtn">CSVをダウンロード（バックアップ用）</button>
+          <button class="pill-btn" id="importBtn">CSVを読み込む</button>
+          <input type="file" id="importFile" accept=".csv">
+          <button class="pill-btn" id="resetBtn">この企業をリセット</button>
+        </div>
+      </div>
+    </details>
     <div class="footnote">
       作業内容はページを閉じると消えます。GAS連携での保存を基本にし、CSVは念のためのバックアップとして使ってください。
     </div>
@@ -1136,7 +1143,10 @@ function renderQuarterChart(){
 /* ================= GAS spreadsheet sync ================= */
 function gasUrl(){ return document.getElementById('gasUrlInput').value.trim(); }
 function setGasStatus(msg){ document.getElementById('gasStatus').textContent = msg; }
-function updateGasCompanyLabel(){ document.getElementById('gasCompanyLabel').textContent = currentCompany; }
+function updateGasCompanyLabel(){
+  const btn = document.getElementById('gasSaveBtn');
+  if(btn) btn.textContent = '保存する（' + currentCompany + '）';
+}
 
 async function gasLoad(){
   const url = gasUrl();
