@@ -242,6 +242,33 @@
       </div>
     </div>
 
+    <div class="section-label">損益構成図(費用側 vs 収益側)</div>
+    <div class="chart-card">
+      <h3>最新年度の内訳(費用側合計 = 収益側合計)</h3>
+      <div class="chart-box" id="plStructureChart"></div>
+      <div class="footnote">
+        費用側: 売上原価・販管費・営業外費用・特別損失・法人税等・当期純利益の積み上げ。収益側: 売上高・営業外収益・特別利益の積み上げ。営業外・特別損益・法人税等は未入力なら0として扱われます(その場合、当期純利益の位置が営業利益とほぼ同じ高さになります)。
+      </div>
+    </div>
+
+    <div class="section-label">貸借対照表の構成(調達と運用)</div>
+    <div class="chart-card">
+      <h3>最新年度末:資産 = 負債 + 純資産</h3>
+      <div class="chart-box" id="bsCompositionChart"></div>
+      <div class="footnote">
+        左が資産(運用状況:何に使われているか)、右が負債+純資産(調達状況:どう資金を集めたか)。負債は「総資産−自己資本(純資産)」として計算しています。
+      </div>
+    </div>
+
+    <div class="section-label">キャッシュ・フローのウォーターフォール</div>
+    <div class="chart-card">
+      <h3>最新年度:期首現金 → 営業CF → 投資CF → 財務CF → 期末現金</h3>
+      <div class="chart-box" id="cfWaterfallChart"></div>
+      <div class="footnote">
+        「入力」タブの元帳に、期首現金・営業CF・投資CF・財務CFの4項目を入力すると表示されます(未入力の間はグラフが出ません)。
+      </div>
+    </div>
+
     <div class="section-label">用語集</div>
     <div class="chart-card glossary">
       <details>
@@ -313,7 +340,7 @@
           <tr>
             <th>年度</th><th></th>
             <th>売上高</th><th>売上原価</th><th>商品(棚卸)</th><th>売掛金</th><th>買掛金</th>
-            <th>営業利益</th><th>販管費</th><th>自己資本</th><th>総資産</th><th>配当金</th><th>当期純利益</th>
+            <th>営業利益</th><th>販管費</th><th>営業外収益</th><th>営業外費用</th><th>特別利益</th><th>特別損失</th><th>法人税等</th><th>自己資本</th><th>総資産</th><th>配当金</th><th>当期純利益</th><th>期首現金</th><th>営業CF</th><th>投資CF</th><th>財務CF</th>
             <th>原価率%</th><th>販管費率%</th><th>営業利益率%</th><th>自己資本比率%</th><th>配当性向%</th>
             <th>在庫日数</th><th>売掛日数</th><th>買掛日数</th><th>CCC</th>
             <th>メモ（この企業固有の出来事）</th>
@@ -361,11 +388,11 @@
 const QUARTER_OPTIONS = ['第1四半期','第2四半期','第3四半期','期末'];
 
 const SHIMAMURA_RECORDS = [
-  {id:'r1', year:'2022年2月期', sales:583618, cogs:384687, inventory:52599, receivables:8509, payables:28425, opIncome:49420, sga:150663, equity:410995, totalAssets:474811, dividend:8820, netIncome:35428, memo:''},
-  {id:'r2', year:'2023年2月期', sales:616125, cogs:406129, inventory:54266, receivables:10217, payables:24285, opIncome:53302, sga:158088, equity:440048, totalAssets:502552, dividend:9555, netIncome:38021, memo:''},
-  {id:'r3', year:'2024年2月期', sales:635091, cogs:416529, inventory:57146, receivables:12349, payables:24625, opIncome:55308, sga:164662, equity:471408, totalAssets:533807, dividend:10290, netIncome:40084, memo:''},
-  {id:'r4', year:'2025年2月期', sales:665358, cogs:434475, inventory:56829, receivables:13726, payables:24066, opIncome:59240, sga:173026, equity:500976, totalAssets:567144, dividend:14700, netIncome:41885, memo:''},
-  {id:'r5', year:'2026年2月期', sales:700034, cogs:456130, inventory:60923, receivables:15000, payables:25696, opIncome:61483, sga:183771, equity:488545, totalAssets:554667, dividend:15309, netIncome:44460, memo:''},
+  {id:'r1', year:'2022年2月期', sales:583618, cogs:384687, inventory:52599, receivables:8509, payables:28425, opIncome:49420, sga:150663, nonOpIncome:1166, nonOpExpense:19, extraGain:225, extraLoss:568, incomeTax:14795, equity:410995, totalAssets:474811, dividend:8820, netIncome:35428, cashBegin:null, operatingCF:37213, investingCF:null, financingCF:null, memo:''},
+  {id:'r2', year:'2023年2月期', sales:616125, cogs:406129, inventory:54266, receivables:10217, payables:24285, opIncome:53302, sga:158088, nonOpIncome:1088, nonOpExpense:7, extraGain:45, extraLoss:790, incomeTax:15617, equity:440048, totalAssets:502552, dividend:9555, netIncome:38021, cashBegin:null, operatingCF:41552, investingCF:null, financingCF:null, memo:''},
+  {id:'r3', year:'2024年2月期', sales:635091, cogs:416529, inventory:57146, receivables:12349, payables:24625, opIncome:55308, sga:164662, nonOpIncome:1414, nonOpExpense:6, extraGain:16, extraLoss:1190, incomeTax:15457, equity:471408, totalAssets:533807, dividend:10290, netIncome:40084, cashBegin:null, operatingCF:41162, investingCF:null, financingCF:null, memo:''},
+  {id:'r4', year:'2025年2月期', sales:665358, cogs:434475, inventory:56829, receivables:13726, payables:24066, opIncome:59240, sga:173026, nonOpIncome:1558, nonOpExpense:202, extraGain:0, extraLoss:1177, incomeTax:17533, equity:500976, totalAssets:567144, dividend:14700, netIncome:41885, cashBegin:null, operatingCF:52800, investingCF:null, financingCF:null, memo:''},
+  {id:'r5', year:'2026年2月期', sales:700034, cogs:456130, inventory:60923, receivables:15000, payables:25696, opIncome:61483, sga:183771, nonOpIncome:2193, nonOpExpense:4, extraGain:0, extraLoss:1263, incomeTax:17948, equity:488545, totalAssets:554667, dividend:15309, netIncome:44460, cashBegin:null, operatingCF:48052, investingCF:null, financingCF:null, memo:''},
 ];
 const SHIMAMURA_QUARTERS = [
   {id:'q1',  year:'2022年2月期', quarter:'第1四半期', inventory:59391},
@@ -417,7 +444,7 @@ document.getElementById('unitSelect').addEventListener('change', (e) => {
 });
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 
-const FIELDS = ['sales','cogs','inventory','receivables','payables','opIncome','sga','equity','totalAssets','dividend','netIncome'];
+const FIELDS = ['sales','cogs','inventory','receivables','payables','opIncome','sga','nonOpIncome','nonOpExpense','extraGain','extraLoss','incomeTax','equity','totalAssets','dividend','netIncome','cashBegin','operatingCF','investingCF','financingCF'];
 
 function n(v){ return (v===''||v===null||v===undefined||isNaN(v)) ? null : Number(v); }
 function fmt(v, d=1){ return v===null ? '—' : v.toFixed(d); }
@@ -457,7 +484,7 @@ document.getElementById('addCompanyBtn').addEventListener('click', () => {
   if(!name || !name.trim()) return;
   const clean = name.trim();
   if(companies[clean]){ alert('その企業はすでにあります。'); currentCompany = clean; renderCompanySelect(); render(); return; }
-  companies[clean] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null}], quarters: [], unit:'百万円' };
+  companies[clean] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null,nonOpIncome:null,nonOpExpense:null,extraGain:null,extraLoss:null,incomeTax:null,equity:null,totalAssets:null,dividend:null,netIncome:null,cashBegin:null,operatingCF:null,investingCF:null,financingCF:null,memo:''}], quarters: [], unit:'百万円' };
   currentCompany = clean;
   renderCompanySelect();
   updateGasCompanyLabel();
@@ -899,6 +926,191 @@ function renderRadarChart(containerId, seriesList){
   el.innerHTML = svg + legend;
 }
 
+function renderPLStructureChart(){
+  const el = document.getElementById('plStructureChart');
+  const recs = records();
+  if(recs.length === 0){ el.innerHTML = '<div class="empty-note">データを入力するとここに表示されます</div>'; return; }
+  const last = recs[recs.length-1];
+  const cogs=n(last.cogs), sga=n(last.sga), sales=n(last.sales);
+  const nonOpInc=n(last.nonOpIncome), nonOpExp=n(last.nonOpExpense);
+  const extraGain=n(last.extraGain), extraLoss=n(last.extraLoss);
+  const incomeTax=n(last.incomeTax), netIncome=n(last.netIncome);
+
+  if(cogs===null || sga===null || sales===null || netIncome===null){
+    el.innerHTML = '<div class="empty-note">売上高・売上原価・販管費・当期純利益は必須です</div>';
+    return;
+  }
+  // 未入力の項目は0として扱う(営業外・特別・法人税等は任意入力)
+  const nOI = nonOpInc||0, nOE = nonOpExp||0, eG = extraGain||0, eL = extraLoss||0, tax = incomeTax||0;
+
+  const costTotal = cogs + sga + nOE + eL + tax + netIncome;
+  const revTotal = sales + nOI + eG;
+
+  const width=440, height=340, barW=110, gap=100, padT=32, padB=40;
+  const maxVal = Math.max(costTotal, revTotal);
+  const scale = (height-padT-padB) / maxVal;
+  const leftX = width/2 - gap/2 - barW;
+  const rightX = width/2 + gap/2;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;max-width:480px;height:auto;display:block;margin:0 auto;">`;
+
+  const drawStack = (x, blocks) => {
+    let y = padT + (maxVal - blocks.reduce((s,b)=>s+b.val,0)) * scale;
+    blocks.forEach(b => {
+      if(b.val <= 0) return;
+      const h = b.val*scale;
+      svg += `<rect x="${x}" y="${y.toFixed(1)}" width="${barW}" height="${h.toFixed(1)}" fill="${b.color}"/>`;
+      if(h > 14){
+        svg += `<text x="${x+barW/2}" y="${(y+h/2+4).toFixed(1)}" font-size="9.5" fill="#0d1117" text-anchor="middle" font-weight="700">${svgEscapeText(b.label)}</text>`;
+      }
+      y += h;
+    });
+  };
+
+  // 費用側(左): 売上原価 → 販管費 → 営業外費用 → 特別損失 → 法人税等 → 当期純利益
+  drawStack(leftX, [
+    {label:'売上原価', val:cogs, color:'#b8433a'},
+    {label:'販管費', val:sga, color:'#c98a3a'},
+    {label:'営業外費用', val:nOE, color:'#8b93a1'},
+    {label:'特別損失', val:eL, color:'#6b5b73'},
+    {label:'法人税等', val:tax, color:'#4a5568'},
+    {label:'当期純利益', val:netIncome, color:'#5c8a5c'},
+  ]);
+  svg += `<text x="${leftX+barW/2}" y="${padT-12}" font-size="12" fill="#e8e3d5" text-anchor="middle" font-weight="700">費用側</text>`;
+
+  // 収益側(右): 売上高 → 営業外収益 → 特別利益
+  drawStack(rightX, [
+    {label:'売上高', val:sales, color:'#c9a227'},
+    {label:'営業外収益', val:nOI, color:'#7a9bc4'},
+    {label:'特別利益', val:eG, color:'#9c8043'},
+  ]);
+  svg += `<text x="${rightX+barW/2}" y="${padT-12}" font-size="12" fill="#e8e3d5" text-anchor="middle" font-weight="700">収益側</text>`;
+
+  svg += `<line x1="${leftX-10}" y1="${padT+(height-padT-padB)}" x2="${rightX+barW+10}" y2="${padT+(height-padT-padB)}" stroke="#2a3441" stroke-width="1"/>`;
+  svg += '</svg>';
+
+  const legendItems = [
+    ['#b8433a','売上原価'], ['#c98a3a','販管費'], ['#8b93a1','営業外費用'], ['#6b5b73','特別損失'],
+    ['#4a5568','法人税等'], ['#5c8a5c','当期純利益'], ['#c9a227','売上高'], ['#7a9bc4','営業外収益'], ['#9c8043','特別利益'],
+  ];
+  const legend = '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px;font-size:10.5px;color:#e8e3d5;">' +
+    legendItems.map(([c,l]) => `<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:${c};display:inline-block;border-radius:2px;"></span>${svgEscapeText(l)}</span>`).join('') +
+    '</div>';
+
+  const balanced = Math.abs(costTotal - revTotal) < 1;
+  const note = balanced
+    ? ''
+    : `<div class="footnote" style="margin-top:10px;">費用側合計(${costTotal.toLocaleString()})と収益側合計(${revTotal.toLocaleString()})が一致していません。営業外・特別損益・法人税等の入力に漏れがないか確認してください。</div>`;
+
+  el.innerHTML = svg + legend + note;
+}
+
+function renderBSCompositionChart(){
+  const el = document.getElementById('bsCompositionChart');
+  const recs = records();
+  if(recs.length===0){ el.innerHTML = '<div class="empty-note">データを入力するとここに表示されます</div>'; return; }
+  const last = recs[recs.length-1];
+  const equity = n(last.equity), totalAssets = n(last.totalAssets);
+  if(equity===null || totalAssets===null){
+    el.innerHTML = '<div class="empty-note">自己資本・総資産が入力されると表示されます</div>';
+    return;
+  }
+  const liabilities = totalAssets - equity;
+
+  const width=360, height=280, barW=130, padT=30, padB=40;
+  const scale = (height-padT-padB) / totalAssets;
+  const leftX = width/2 - barW - 12;
+  const rightX = width/2 + 12;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;max-width:380px;height:auto;display:block;margin:0 auto;">`;
+
+  // 左: 資産(単色)
+  const assetH = totalAssets*scale;
+  svg += `<rect x="${leftX}" y="${padT}" width="${barW}" height="${assetH.toFixed(1)}" fill="#c9a227"/>`;
+  svg += `<text x="${leftX+barW/2}" y="${(padT+assetH/2+4).toFixed(1)}" font-size="12" fill="#0d1117" text-anchor="middle" font-weight="700">資産</text>`;
+  svg += `<text x="${leftX+barW/2}" y="${padT-10}" font-size="11" fill="#e8e3d5" text-anchor="middle">運用状況</text>`;
+
+  // 右: 負債(上) + 純資産(下)
+  const liabH = liabilities*scale, eqH = equity*scale;
+  svg += `<rect x="${rightX}" y="${padT}" width="${barW}" height="${liabH.toFixed(1)}" fill="#b8433a"/>`;
+  if(liabH>16) svg += `<text x="${rightX+barW/2}" y="${(padT+liabH/2+4).toFixed(1)}" font-size="12" fill="#fff" text-anchor="middle" font-weight="700">負債</text>`;
+  svg += `<rect x="${rightX}" y="${(padT+liabH).toFixed(1)}" width="${barW}" height="${eqH.toFixed(1)}" fill="#5c8a5c"/>`;
+  if(eqH>16) svg += `<text x="${rightX+barW/2}" y="${(padT+liabH+eqH/2+4).toFixed(1)}" font-size="12" fill="#0d1117" text-anchor="middle" font-weight="700">純資産</text>`;
+  svg += `<text x="${rightX+barW/2}" y="${padT-10}" font-size="11" fill="#e8e3d5" text-anchor="middle">調達状況</text>`;
+
+  svg += `<line x1="${leftX-10}" y1="${padT+assetH}" x2="${rightX+barW+10}" y2="${padT+assetH}" stroke="#2a3441" stroke-width="1"/>`;
+  svg += '</svg>';
+
+  const legend = `<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:8px;font-size:11px;color:#e8e3d5;">
+    <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:#c9a227;display:inline-block;border-radius:2px;"></span>資産</span>
+    <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:#b8433a;display:inline-block;border-radius:2px;"></span>負債</span>
+    <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:#5c8a5c;display:inline-block;border-radius:2px;"></span>純資産</span>
+  </div>`;
+  el.innerHTML = svg + legend;
+}
+
+function renderCFWaterfallChart(){
+  const el = document.getElementById('cfWaterfallChart');
+  const recs = records();
+  if(recs.length===0){ el.innerHTML = '<div class="empty-note">データを入力するとここに表示されます</div>'; return; }
+  const last = recs[recs.length-1];
+  const cashBegin=n(last.cashBegin), opCF=n(last.operatingCF), invCF=n(last.investingCF), finCF=n(last.financingCF);
+  if(cashBegin===null || opCF===null || invCF===null || finCF===null){
+    el.innerHTML = '<div class="empty-note">期首現金・営業CF・投資CF・財務CFがすべて入力されると表示されます</div>';
+    return;
+  }
+  const cashEnd = cashBegin + opCF + invCF + finCF;
+
+  const steps = [
+    {label:'期首現金', val:cashBegin, isTotal:true},
+    {label:'営業CF', val:opCF, isTotal:false},
+    {label:'投資CF', val:invCF, isTotal:false},
+    {label:'財務CF', val:finCF, isTotal:false},
+    {label:'期末現金', val:cashEnd, isTotal:true},
+  ];
+
+  const width=480, height=300, padT=30, padB=50;
+  const barW = 70, gap = (width-40-barW*steps.length)/(steps.length-1);
+  const allVals = [cashBegin, cashEnd, cashBegin+opCF, cashBegin+opCF+invCF];
+  const maxVal = Math.max(...allVals, cashBegin, cashEnd) * 1.05;
+  const minVal = Math.min(0, ...allVals) * 1.05;
+  const scale = (height-padT-padB) / (maxVal-minVal);
+  const yOf = v => padT + (maxVal - v) * scale;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;max-width:520px;height:auto;display:block;margin:0 auto;">`;
+
+  let cumulative = cashBegin;
+  let x = 20;
+  steps.forEach((s, i) => {
+    if(s.isTotal){
+      const y = yOf(s.val);
+      const barH = Math.abs(yOf(0)-yOf(s.val));
+      const barY = Math.min(yOf(0), yOf(s.val));
+      svg += `<rect x="${x}" y="${barY.toFixed(1)}" width="${barW}" height="${barH.toFixed(1)}" fill="#c9a227"/>`;
+      svg += `<text x="${x+barW/2}" y="${(barY-6).toFixed(1)}" font-size="11" fill="#e8e3d5" text-anchor="middle" font-weight="700">${s.val.toLocaleString()}</text>`;
+    } else {
+      const start = cumulative;
+      const end = cumulative + s.val;
+      const y1 = yOf(start), y2 = yOf(end);
+      const top = Math.min(y1,y2), h = Math.abs(y2-y1);
+      const color = s.val >= 0 ? '#5c8a5c' : '#b8433a';
+      svg += `<rect x="${x}" y="${top.toFixed(1)}" width="${barW}" height="${h.toFixed(1)}" fill="${color}"/>`;
+      svg += `<text x="${x+barW/2}" y="${(top-6).toFixed(1)}" font-size="11" fill="#e8e3d5" text-anchor="middle" font-weight="700">${s.val>=0?'+':''}${s.val.toLocaleString()}</text>`;
+      // 前のバーとつなぐ点線
+      svg += `<line x1="${x-gap}" y1="${yOf(start).toFixed(1)}" x2="${x}" y2="${yOf(start).toFixed(1)}" stroke="#5b6472" stroke-width="1" stroke-dasharray="3,2"/>`;
+      cumulative = end;
+    }
+    svg += `<text x="${x+barW/2}" y="${height-padB+18}" font-size="10.5" fill="#8b93a1" text-anchor="middle">${svgEscapeText(s.label)}</text>`;
+    x += barW + gap;
+  });
+
+  // ゼロライン
+  svg += `<line x1="15" y1="${yOf(0).toFixed(1)}" x2="${width-15}" y2="${yOf(0).toFixed(1)}" stroke="#2a3441" stroke-width="1"/>`;
+  svg += '</svg>';
+
+  el.innerHTML = svg;
+}
+
 function renderGroupedBarChart(containerId, categoryLabels, groups){
   const el = document.getElementById(containerId);
   const anyVal = groups.some(g=>g.data.some(v=>v!==null&&v!==undefined));
@@ -1127,6 +1339,9 @@ function renderCharts(){
     }
     renderRadarChart('radarChart', radarSeries);
   }
+  renderPLStructureChart();
+  renderBSCompositionChart();
+  renderCFWaterfallChart();
 }
 
 function renderQuarterChart(){
@@ -1183,7 +1398,7 @@ async function gasLoad(){
     let rIdx=1, qIdx=1;
     const newRecords = (data.records||[]).map(r => ({
       id:'r'+(rIdx++), year:r.year||'', sales:n(r.sales), cogs:n(r.cogs), inventory:n(r.inventory),
-      receivables:n(r.receivables), payables:n(r.payables), opIncome:n(r.opIncome), sga:n(r.sga), equity:n(r.equity), totalAssets:n(r.totalAssets), dividend:n(r.dividend), netIncome:n(r.netIncome), memo:r.memo||''
+      receivables:n(r.receivables), payables:n(r.payables), opIncome:n(r.opIncome), sga:n(r.sga), nonOpIncome:n(r.nonOpIncome), nonOpExpense:n(r.nonOpExpense), extraGain:n(r.extraGain), extraLoss:n(r.extraLoss), incomeTax:n(r.incomeTax), equity:n(r.equity), totalAssets:n(r.totalAssets), dividend:n(r.dividend), netIncome:n(r.netIncome), cashBegin:n(r.cashBegin), operatingCF:n(r.operatingCF), investingCF:n(r.investingCF), financingCF:n(r.financingCF), memo:r.memo||''
     }));
     const newQuarters = (data.quarters||[]).map(q => ({ id:'q'+(qIdx++), year:q.year||'', quarter:q.quarter||'期末', inventory:n(q.inventory) }));
     if(newRecords.length) companies[currentCompany].records = newRecords;
@@ -1204,7 +1419,7 @@ function gasSave(){
   if(!url){ alert('スプレッドシートのURLを入力してください。'); return; }
   setGasStatus('保存中…');
   const payload = JSON.stringify({
-    records: records().map(r => ({year:r.year, sales:r.sales, cogs:r.cogs, inventory:r.inventory, receivables:r.receivables, payables:r.payables, opIncome:r.opIncome, sga:r.sga, equity:r.equity, totalAssets:r.totalAssets, dividend:r.dividend, netIncome:r.netIncome, memo:r.memo||''})),
+    records: records().map(r => ({year:r.year, sales:r.sales, cogs:r.cogs, inventory:r.inventory, receivables:r.receivables, payables:r.payables, opIncome:r.opIncome, sga:r.sga, nonOpIncome:r.nonOpIncome, nonOpExpense:r.nonOpExpense, extraGain:r.extraGain, extraLoss:r.extraLoss, incomeTax:r.incomeTax, equity:r.equity, totalAssets:r.totalAssets, dividend:r.dividend, netIncome:r.netIncome, cashBegin:r.cashBegin, operatingCF:r.operatingCF, investingCF:r.investingCF, financingCF:r.financingCF, memo:r.memo||''})),
     quarters: quarters().map(q => ({year:q.year, quarter:q.quarter, inventory:q.inventory}))
   });
 
@@ -1242,10 +1457,10 @@ function csvEscape(v){
   return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
 }
 function buildCSV(){
-  const header = ['type','year','quarter','sales','cogs','inventory','receivables','payables','opIncome','sga','equity','totalAssets','dividend','netIncome','memo'];
+  const header = ['type','year','quarter','sales','cogs','inventory','receivables','payables','opIncome','sga','nonOpIncome','nonOpExpense','extraGain','extraLoss','incomeTax','equity','totalAssets','dividend','netIncome','cashBegin','operatingCF','investingCF','financingCF','memo'];
   const rows = [header.join(',')];
-  records().forEach(r => rows.push(['annual', r.year, '', r.sales, r.cogs, r.inventory, r.receivables, r.payables, r.opIncome, r.sga, r.equity, r.totalAssets, r.dividend, r.netIncome, r.memo||''].map(csvEscape).join(',')));
-  quarters().forEach(q => rows.push(['quarterly', q.year, q.quarter, '', '', q.inventory, '', '', '', '', '', '', '', '', ''].map(csvEscape).join(',')));
+  records().forEach(r => rows.push(['annual', r.year, '', r.sales, r.cogs, r.inventory, r.receivables, r.payables, r.opIncome, r.sga, r.nonOpIncome, r.nonOpExpense, r.extraGain, r.extraLoss, r.incomeTax, r.equity, r.totalAssets, r.dividend, r.netIncome, r.cashBegin, r.operatingCF, r.investingCF, r.financingCF, r.memo||''].map(csvEscape).join(',')));
+  quarters().forEach(q => rows.push(['quarterly', q.year, q.quarter, '', '', q.inventory, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''].map(csvEscape).join(',')));
   globalEvents.forEach(ev => rows.push(['event', ev.year, '', '', '', '', '', '', '', '', '', '', '', '', ev.event||''].map(csvEscape).join(',')));
   return rows.join('\n');
 }
@@ -1274,8 +1489,8 @@ function importCSV(text){
   const newRecords=[], newQuarters=[], newEvents=[]; let rIdx=1, qIdx=1, eIdx=1;
   for(let i=1;i<lines.length;i++){
     const cols = parseCSVLine(lines[i]);
-    const [type, year, quarter, sales, cogs, inventory, receivables, payables, opIncome, sga, equity, totalAssets, dividend, netIncome, memo] = cols;
-    if(type==='annual') newRecords.push({id:'r'+(rIdx++), year:year||'', sales:n(sales), cogs:n(cogs), inventory:n(inventory), receivables:n(receivables), payables:n(payables), opIncome:n(opIncome), sga:n(sga), equity:n(equity), totalAssets:n(totalAssets), dividend:n(dividend), netIncome:n(netIncome), memo:memo||''});
+    const [type, year, quarter, sales, cogs, inventory, receivables, payables, opIncome, sga, nonOpIncome, nonOpExpense, extraGain, extraLoss, incomeTax, equity, totalAssets, dividend, netIncome, cashBegin, operatingCF, investingCF, financingCF, memo] = cols;
+    if(type==='annual') newRecords.push({id:'r'+(rIdx++), year:year||'', sales:n(sales), cogs:n(cogs), inventory:n(inventory), receivables:n(receivables), payables:n(payables), opIncome:n(opIncome), sga:n(sga), nonOpIncome:n(nonOpIncome), nonOpExpense:n(nonOpExpense), extraGain:n(extraGain), extraLoss:n(extraLoss), incomeTax:n(incomeTax), equity:n(equity), totalAssets:n(totalAssets), dividend:n(dividend), netIncome:n(netIncome), cashBegin:n(cashBegin), operatingCF:n(operatingCF), investingCF:n(investingCF), financingCF:n(financingCF), memo:memo||''});
     else if(type==='quarterly') newQuarters.push({id:'q'+(qIdx++), year:year||'', quarter:quarter||'期末', inventory:n(inventory)});
     else if(type==='event') newEvents.push({id:'e'+(eIdx++), year:year||'', event:memo||''});
   }
@@ -1298,7 +1513,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
 });
 
 document.getElementById('addRowBtn').addEventListener('click', () => {
-  records().push({id:'r'+Date.now(), year:'新年度', sales:null, cogs:null, inventory:null, receivables:null, payables:null, opIncome:null, sga:null, equity:null, totalAssets:null, dividend:null, netIncome:null, memo:''});
+  records().push({id:'r'+Date.now(), year:'新年度', sales:null, cogs:null, inventory:null, receivables:null, payables:null, opIncome:null, sga:null, nonOpIncome:null, nonOpExpense:null, extraGain:null, extraLoss:null, incomeTax:null, equity:null, totalAssets:null, dividend:null, netIncome:null, cashBegin:null, operatingCF:null, investingCF:null, financingCF:null, memo:''});
   render();
 });
 document.getElementById('resetBtn').addEventListener('click', () => {
@@ -1306,7 +1521,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   if(currentCompany === '株式会社しまむら'){
     companies[currentCompany] = { records: structuredClone(SHIMAMURA_RECORDS), quarters: structuredClone(SHIMAMURA_QUARTERS), unit: '百万円' };
   }else{
-    companies[currentCompany] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null}], quarters: [], unit: companies[currentCompany].unit || '百万円' };
+    companies[currentCompany] = { records: [{id:'r'+Date.now(), year:'新年度', sales:null,cogs:null,inventory:null,receivables:null,payables:null,opIncome:null,sga:null,nonOpIncome:null,nonOpExpense:null,extraGain:null,extraLoss:null,incomeTax:null,equity:null,totalAssets:null,dividend:null,netIncome:null,cashBegin:null,operatingCF:null,investingCF:null,financingCF:null,memo:''}], quarters: [], unit: companies[currentCompany].unit || '百万円' };
   }
   applyUnitLabels();
   render();
